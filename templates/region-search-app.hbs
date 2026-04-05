@@ -1,0 +1,58 @@
+<section class="traveller-scenes__app traveller-scenes__stack">
+  <section class="traveller-scenes__stack">
+    <label class="traveller-scenes__field">
+      <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Search.Label"}}</span>
+      <div class="traveller-scenes__search-row">
+        <input
+          class="traveller-scenes__input"
+          type="text"
+          name="query"
+          value="{{query}}"
+          placeholder="{{localize "TRAVELLER_SCENES.Search.Placeholder"}}"
+          autocomplete="off"
+        />
+        <button class="traveller-scenes__button" type="button" data-action="search">{{localize "TRAVELLER_SCENES.Search.Actions.Search"}}</button>
+      </div>
+    </label>
+
+    <p class="traveller-scenes__hint">
+      {{localize "TRAVELLER_SCENES.Search.Hint"}}
+    </p>
+
+    {{#if isLoading}}
+      <p class="traveller-scenes__status">{{localize "TRAVELLER_SCENES.Search.Status.Searching"}}</p>
+    {{/if}}
+
+    {{#if error}}
+      <p class="traveller-scenes__status traveller-scenes__status--error">{{error}}</p>
+    {{/if}}
+
+    {{#if hasResults}}
+      <div class="traveller-scenes__results">
+        {{#each results}}
+          <label class="traveller-scenes__result">
+            <input type="radio" name="region" value="{{key}}" {{#if isSelected}}checked{{/if}} />
+            <span class="traveller-scenes__result-copy">
+              <strong>{{name}}</strong>
+              <small>{{coordinateText}}</small>
+              <small>{{tagText}}</small>
+            </span>
+          </label>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="traveller-scenes__hint">{{localize "TRAVELLER_SCENES.Search.Empty"}}</p>
+    {{/if}}
+  </section>
+
+  <footer class="traveller-scenes__footer">
+    <button
+      class="traveller-scenes__button traveller-scenes__button--primary"
+      type="button"
+      data-action="create-region-scene"
+      {{#unless canCreate}}disabled{{/unless}}
+    >
+      {{#if isCreating}}{{localize "TRAVELLER_SCENES.Search.Actions.Creating"}}{{else}}{{localize "TRAVELLER_SCENES.Search.Actions.Create"}}{{/if}}
+    </button>
+  </footer>
+</section>

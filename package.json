@@ -1,0 +1,26 @@
+{
+  "name": "traveller-scenes",
+  "version": "0.1.0",
+  "description": "Foundry VTT module for generating scenes from TravellerMap.",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CptConstantine/foundry-traveller-scenes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CptConstantine/foundry-traveller-scenes/issues"
+  },
+  "homepage": "https://github.com/CptConstantine/foundry-traveller-scenes#readme",
+  "type": "module",
+  "scripts": {
+    "build": "node ./build.mjs",
+    "dev": "node ./build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@league-of-foundry-developers/foundry-vtt-types": "13.346.0-beta.20251209192131",
+    "@types/node": "^22.14.1",
+    "esbuild": "^0.25.2",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "TRAVELLER_SCENES": {
+    "ModuleTitle": "Traveller Scenes",
+    "Sidebar": {
+      "CreateScene": "Create Traveller Region"
+    },
+    "Search": {
+      "WindowTitle": "Traveller region search",
+      "Label": "region search",
+      "Placeholder": "Spinward Marches",
+      "Hint": "Search TravellerMap for a region, then create a scene that uses the poster image as the background with a matching Traveller hex grid overlaid in Foundry.",
+      "Empty": "No regions loaded yet. Try a search like Spinward Marches.",
+      "Status": {
+        "Searching": "Searching TravellerMap…"
+      },
+      "Actions": {
+        "Search": "Search",
+        "Create": "Create scene",
+        "Creating": "Creating scene…"
+      },
+      "Coordinates": "region {x}, {y}",
+      "NoTags": "No TravellerMap tags",
+      "Errors": {
+        "EnterQuery": "Enter a region name to search TravellerMap.",
+        "NoResults": "No regions found for “{query}”.",
+        "ChooseRegion": "Choose a region before creating a scene."
+      }
+    },
+    "Scene": {
+      "Name": "{name} region"
+    },
+    "Notifications": {
+      "CreatedScene": "Created scene: {name}"
+    },
+    "Errors": {
+      "OnlyGM": "Only a GM can create scenes.",
+      "SearchFailed": "TravellerMap search failed.",
+      "SceneCreationFailed": "Scene creation failed.",
+      "SearchStatus": "TravellerMap search failed with status {status}.",
+      "PosterStatus": "TravellerMap poster request failed with status {status}.",
+      "PosterStoreFailed": "Failed to store the TravellerMap poster in Foundry's module storage.",
+      "PosterDirectoryCreateFailed": "Failed to create poster asset directory: {message}",
+      "PosterLoadFailed": "Failed to load the TravellerMap poster image.",
+      "SceneLevelMissing": "Foundry did not create an initial Scene Level.",
+      "SceneCreateMissing": "Foundry did not return a Scene document."
+    }
+  }
+}

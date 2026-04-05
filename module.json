@@ -1,0 +1,32 @@
+{
+  "id": "traveller-scenes",
+  "title": "Traveller Scenes",
+  "description": "Generate Foundry VTT scenes from TravellerMap posters with an aligned Traveller hex grid.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "Shaun"
+    }
+  ],
+  "url": "https://github.com/CptConstantine/foundry-traveller-scenes",
+  "bugs": "https://github.com/CptConstantine/foundry-traveller-scenes/issues",
+  "readme": "README.md",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14.359"
+  },
+  "persistentStorage": true,
+  "esmodules": [
+    "scripts/module.mjs"
+  ],
+  "styles": [
+    "styles/traveller-scenes.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ]
+}

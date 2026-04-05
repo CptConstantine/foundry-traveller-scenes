@@ -1,0 +1,131 @@
+.traveller-scenes {
+  --traveller-scenes-border: rgba(255, 255, 255, 0.12);
+  --traveller-scenes-panel: rgba(11, 18, 32, 0.92);
+  --traveller-scenes-panel-alt: rgba(22, 31, 52, 0.9);
+  --traveller-scenes-accent: #4ac0ff;
+  --traveller-scenes-accent-strong: #7bd6ff;
+  --traveller-scenes-text: #eef6ff;
+  --traveller-scenes-muted: #a8bdd4;
+  --traveller-scenes-error: #ff8a8a;
+}
+
+.traveller-scenes__app {
+  color: var(--traveller-scenes-text);
+}
+
+.traveller-scenes__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.traveller-scenes__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.traveller-scenes__label {
+  font-weight: 600;
+}
+
+.traveller-scenes__search-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.traveller-scenes__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.traveller-scenes__hint,
+.traveller-scenes__status {
+  margin: 0;
+  color: var(--traveller-scenes-muted);
+}
+
+.traveller-scenes__status--error {
+  color: var(--traveller-scenes-error);
+}
+
+.traveller-scenes__results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.traveller-scenes__result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.5rem;
+  background: var(--traveller-scenes-panel-alt);
+}
+
+.traveller-scenes__result-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.traveller-scenes__result-copy small {
+  color: var(--traveller-scenes-muted);
+}
+
+.traveller-scenes__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.traveller-scenes__button {
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--traveller-scenes-panel-alt);
+  color: var(--traveller-scenes-text);
+  cursor: pointer;
+}
+
+.traveller-scenes__button:hover:not(:disabled) {
+  border-color: var(--traveller-scenes-accent);
+  box-shadow: 0 0 0 1px rgba(74, 192, 255, 0.15);
+}
+
+.traveller-scenes__button--primary {
+  background: linear-gradient(135deg, rgba(39, 84, 144, 0.95), rgba(31, 122, 182, 0.95));
+  border-color: rgba(123, 214, 255, 0.3);
+}
+
+.traveller-scenes__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.traveller-scenes__sidebar-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--traveller-scenes-panel-alt);
+  color: var(--traveller-scenes-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.traveller-scenes__sidebar-launcher:hover {
+  border-color: var(--traveller-scenes-accent);
+  box-shadow: 0 0 0 1px rgba(74, 192, 255, 0.15);
+}
+
+.traveller-scenes__sidebar-launcher i {
+  color: var(--traveller-scenes-accent-strong);
+}
