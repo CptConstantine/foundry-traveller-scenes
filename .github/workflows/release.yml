@@ -1,0 +1,66 @@
+name: Publish Foundry release assets
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release-assets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify versions match release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFile } from 'node:fs/promises';
+
+          const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+          const moduleJson = JSON.parse(await readFile('module.json', 'utf8'));
+          const expectedTag = `v${moduleJson.version}`;
+
+          if (packageJson.version !== moduleJson.version) {
+            throw new Error(
+              `package.json version (${packageJson.version}) must match module.json version (${moduleJson.version}).`
+            );
+          }
+
+          if (process.env.RELEASE_TAG !== expectedTag) {
+            throw new Error(
+              `Release tag ${process.env.RELEASE_TAG} does not match module version ${expectedTag}.`
+            );
+          }
+          EOF
+
+      - name: Type-check project
+        run: npm run typecheck
+
+      - name: Build release assets
+        run: npm run release:prepare
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/module.json
+            dist/traveller-scenes.zip
+          overwrite_files: true
