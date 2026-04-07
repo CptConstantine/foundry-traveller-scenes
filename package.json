@@ -15,11 +15,13 @@
   "scripts": {
     "build": "node ./build.mjs",
     "dev": "node ./build.mjs --watch",
+    "release:prepare": "node ./build.mjs --release",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@league-of-foundry-developers/foundry-vtt-types": "13.346.0-beta.20251209192131",
     "@types/node": "^22.14.1",
+    "archiver": "^7.0.1",
     "esbuild": "^0.25.2",
     "typescript": "^5.8.3"
   }
