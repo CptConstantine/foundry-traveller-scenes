@@ -1,7 +1,7 @@
 {
   "id": "traveller-scenes",
   "title": "Traveller Scenes",
-  "description": "Generate Foundry VTT scenes from TravellerMap posters with an aligned Traveller hex grid.",
+  "description": "Generate Foundry VTT scenes from TravellerMap API.",
   "version": "0.1.0",
   "authors": [
     {

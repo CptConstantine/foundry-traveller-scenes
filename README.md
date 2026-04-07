@@ -46,6 +46,14 @@ Prepare release assets locally:
 - Source: <https://github.com/CptConstantine/foundry-traveller-scenes>
 - Issues: <https://github.com/CptConstantine/foundry-traveller-scenes/issues>
 
+## Legal and attribution
+
+This is an unofficial, fan-made module for Foundry Virtual Tabletop. It is not affiliated with, endorsed by, or approved by Mongoose Publishing, Traveller Map, or Joshua Bell.
+
+Traveller is a registered trademark of Mongoose Publishing. All Traveller-related intellectual property, trademarks, setting material, and associated rights remain with their respective owners.
+
+This module does not bundle TravellerMap source code, map datasets, or poster images in its release artifacts. Instead, it calls the public TravellerMap APIs at runtime and stores fetched poster images in the local Foundry data directory for the user's own use.
+
 ## Releasing
 
 The repository now includes a GitHub Actions workflow at `.github/workflows/release.yml`.
