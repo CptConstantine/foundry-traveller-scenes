@@ -1,14 +1,14 @@
 import { MODULE_ID } from "./config/constants.js";
-import { RegionSearchApplication } from "./ui/region-search-app.js";
+import { SectorSearchApplication } from "./ui/sector-search-app.js";
 import { localize } from "./utils/localization.js";
 
-let regionSearchApplication: RegionSearchApplication | null = null;
+let sectorSearchApplication: SectorSearchApplication | null = null;
 
 const SIDEBAR_LAUNCHER_ATTRIBUTE = `data-${MODULE_ID}-sidebar-launcher`;
 
-function openRegionSearchApplication(): void {
-  regionSearchApplication ??= new RegionSearchApplication();
-  void regionSearchApplication.render({ force: true });
+function openSectorSearchApplication(): void {
+  sectorSearchApplication ??= new SectorSearchApplication();
+  void sectorSearchApplication.render({ force: true });
 }
 
 function injectSidebarLauncher(element: HTMLElement): void {
@@ -30,7 +30,7 @@ function injectSidebarLauncher(element: HTMLElement): void {
   launcherLabel.textContent = localize("Sidebar.CreateScene");
   launcherButton.append(launcherLabel);
   launcherButton.addEventListener("click", () => {
-    openRegionSearchApplication();
+    openSectorSearchApplication();
   });
 
   actionContainer.prepend(launcherButton);

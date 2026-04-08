@@ -1,4 +1,4 @@
-import type { RegionDimensions } from "../types/traveller.js";
+import type { SectorDimensions } from "../types/traveller.js";
 
 const HEX_HEIGHT_TO_WIDTH_RATIO = Math.sqrt(3) / 2;
 
@@ -12,7 +12,7 @@ export interface FlatTopHexMetrics {
 export function calculateFlatTopHexMetricsFromImage(
   imageWidth: number,
   imageHeight: number,
-  dimensions: RegionDimensions
+  dimensions: SectorDimensions
 ): FlatTopHexMetrics {
   const normalizedHexHeight = imageHeight / (dimensions.rows + 0.5);
   const normalizedHexWidth = normalizedHexHeight / HEX_HEIGHT_TO_WIDTH_RATIO;

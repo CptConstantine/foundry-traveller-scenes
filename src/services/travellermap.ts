@@ -2,18 +2,25 @@ import {
   DEFAULT_POSTER_OPTIONS,
   MODULE_ID,
   POSTER_STORAGE_PATH,
+  SECTOR_HEX_COLUMNS,
+  SECTOR_HEX_ROWS,
+  SUBSECTOR_HEX_COLUMNS,
+  SUBSECTOR_HEX_ROWS,
   TRAVELLER_MAP_API_BASE
 } from "../config/constants.js";
 import { formatLocalize, localize } from "../utils/localization.js";
 import type {
   PosterImageInfo,
   TravellerMapSearchResponse,
+  TravellerMapSectorResult,
+  TravellerMapSearchItem,
+  TravellerMapSubsectorResult,
   TravellerPosterOptions,
-  TravellerRegionSelection
+  TravellerSectorSelection
 } from "../types/traveller.js";
 
 export class TravellerMapService {
-  async searchRegions(query: string): Promise<TravellerRegionSelection[]> {
+  async searchSectors(query: string): Promise<TravellerSectorSelection[]> {
     const trimmedQuery = query.trim();
 
     if (!trimmedQuery) {
@@ -30,37 +37,34 @@ export class TravellerMapService {
 
     const payload = (await response.json()) as TravellerMapSearchResponse;
     const items = payload.Results?.Items ?? [];
-    const regions = items
-      .map((item) => item.Region)
-      .filter((region): region is NonNullable<typeof region> => Boolean(region));
 
-    const deduped = new Map<string, TravellerRegionSelection>();
+    const deduped = new Map<string, TravellerSectorSelection>();
 
-    for (const region of regions) {
-      const key = this.createRegionKey(region.Name, region.RegionX, region.RegionY);
-      deduped.set(key, {
-        key,
-        name: region.Name,
-        regionX: region.RegionX,
-        regionY: region.RegionY,
-        tags: (region.RegionTags ?? "")
-          .split(/\s+/)
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-      });
+    for (const item of items) {
+      const selection = this.toSectorSelection(item);
+      if (!selection) {
+        continue;
+      }
+
+      deduped.set(selection.key, selection);
     }
 
     return Array.from(deduped.values()).sort((left, right) => left.name.localeCompare(right.name));
   }
 
   buildPosterUrl(
-    region: TravellerRegionSelection,
+    sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): string {
     const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
 
-    url.searchParams.set("Region", region.name);
+    url.searchParams.set("sector", sector.sectorName);
+
+    if (sector.kind === "subsector" && sector.subsectorIndex) {
+      url.searchParams.set("subsector", sector.subsectorIndex);
+    }
+
     url.searchParams.set("style", resolvedOptions.style);
     url.searchParams.set("scale", String(resolvedOptions.scale));
 
@@ -84,14 +88,14 @@ export class TravellerMapService {
   }
 
   async getPosterImageInfo(
-    region: TravellerRegionSelection,
+    sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<PosterImageInfo> {
     const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
-    const remoteUrl = this.buildPosterUrl(region, resolvedOptions);
+    const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
     const posterBlob = await this.fetchPosterBlob(remoteUrl);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
-    const cachedPath = await this.cachePosterBlob(region, resolvedOptions, posterBlob);
+    const cachedPath = await this.cachePosterBlob(sector, resolvedOptions, posterBlob);
 
     return {
       url: cachedPath,
@@ -99,8 +103,60 @@ export class TravellerMapService {
     };
   }
 
-  private createRegionKey(name: string, regionX: number, regionY: number): string {
-    return `${name}::${regionX},${regionY}`;
+  private createTypedSectorKey(type: "sector" | "subsector", name: string, location: string): string {
+    return `${type}::${name}::${location}`;
+  }
+
+  private toSectorSelection(item: TravellerMapSearchItem): TravellerSectorSelection | null {
+    if (item.Sector) {
+      return this.fromSectorResult(item.Sector);
+    }
+
+    if (item.Subsector) {
+      return this.fromSubsectorResult(item.Subsector);
+    }
+
+    return null;
+  }
+
+  private fromSectorResult(sector: TravellerMapSectorResult): TravellerSectorSelection {
+    return {
+      key: this.createTypedSectorKey("sector", sector.Name, `${sector.SectorX},${sector.SectorY}`),
+      name: sector.Name,
+      sectorX: sector.SectorX,
+      sectorY: sector.SectorY,
+      tags: this.parseTags(sector.SectorTags),
+      kind: "sector",
+      sectorName: sector.Name,
+      dimensions: {
+        columns: SECTOR_HEX_COLUMNS,
+        rows: SECTOR_HEX_ROWS
+      }
+    };
+  }
+
+  private fromSubsectorResult(subsector: TravellerMapSubsectorResult): TravellerSectorSelection {
+    return {
+      key: this.createTypedSectorKey("subsector", subsector.Sector, subsector.Index),
+      name: `${subsector.Name} (${subsector.Sector})`,
+      sectorX: subsector.SectorX,
+      sectorY: subsector.SectorY,
+      tags: [...this.parseTags(subsector.SectorTags), `Subsector ${subsector.Index}`],
+      kind: "subsector",
+      sectorName: subsector.Sector,
+      subsectorIndex: subsector.Index,
+      dimensions: {
+        columns: SUBSECTOR_HEX_COLUMNS,
+        rows: SUBSECTOR_HEX_ROWS
+      }
+    };
+  }
+
+  private parseTags(tagString?: string): string[] {
+    return (tagString ?? "")
+      .split(/\s+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   }
 
   private async fetchPosterBlob(url: string): Promise<Blob> {
@@ -113,13 +169,13 @@ export class TravellerMapService {
   }
 
   private async cachePosterBlob(
-    region: TravellerRegionSelection,
+    sector: TravellerSectorSelection,
     options: TravellerPosterOptions,
     posterBlob: Blob
   ): Promise<string> {
     const filePicker = foundry.applications.apps.FilePicker.implementation;
     const extension = this.getPosterFileExtension(posterBlob.type);
-    const fileName = `${this.slugify(region.name)}-${region.regionX}-${region.regionY}-${options.scale}-${Date.now()}.${extension}`;
+    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${options.scale}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
 
     await this.ensurePosterStorageDirectory(filePicker);

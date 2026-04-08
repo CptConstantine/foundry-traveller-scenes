@@ -1,22 +1,22 @@
-import { MODULE_ID, REGION_SEARCH_TEMPLATE_PATH } from "../config/constants.js";
-import { createRegionScene } from "../services/scenecreation.js";
+import { MODULE_ID, SECTOR_SEARCH_TEMPLATE_PATH } from "../config/constants.js";
+import { createSectorScene } from "../services/scenecreation.js";
 import { travellerMapService } from "../services/travellermap.js";
 import { formatLocalize, localize } from "../utils/localization.js";
 import type {
-  RegionSearchApplicationContext,
-  RegionSearchResultViewModel,
-  TravellerRegionSelection
+  SectorSearchApplicationContext,
+  SectorSearchResultViewModel,
+  TravellerSectorSelection
 } from "../types/traveller.js";
 
-const RegionSearchApplicationBase = foundry.applications.api.HandlebarsApplicationMixin(
+const SectorSearchApplicationBase = foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 );
 
-export class RegionSearchApplication extends RegionSearchApplicationBase {
+export class SectorSearchApplication extends SectorSearchApplicationBase {
   static override DEFAULT_OPTIONS = foundry.utils.mergeObject(
     super.DEFAULT_OPTIONS,
     {
-      id: `${MODULE_ID}-region-search`,
+      id: `${MODULE_ID}-sector-search`,
       classes: [MODULE_ID],
       tag: "section",
       window: {
@@ -32,12 +32,12 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
 
   static override PARTS = {
     content: {
-      template: REGION_SEARCH_TEMPLATE_PATH
+      template: SECTOR_SEARCH_TEMPLATE_PATH
     }
   } as never;
 
   #query = "";
-  #results: TravellerRegionSelection[] = [];
+  #results: TravellerSectorSelection[] = [];
   #selectedKey: string | null = null;
   #isLoading = false;
   #isCreating = false;
@@ -46,11 +46,11 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
   protected override async _prepareContext(options: never): Promise<any> {
     await super._prepareContext(options as never);
 
-    const context: RegionSearchApplicationContext = {
+    const context: SectorSearchApplicationContext = {
       query: this.#query,
       results: this.#results.map((result) => this.#toResultViewModel(result)),
       hasResults: this.#results.length > 0,
-      canCreate: Boolean(this.#selectedRegion) && !this.#isCreating,
+      canCreate: Boolean(this.#selectedSector) && !this.#isCreating,
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
       error: this.#error
@@ -83,28 +83,28 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
       void this.#executeSearch();
     });
 
-    htmlElement.querySelectorAll<HTMLInputElement>('input[name="region"]').forEach((input) => {
+    htmlElement.querySelectorAll<HTMLInputElement>('input[name="sector"]').forEach((input) => {
       input.addEventListener("change", () => {
         this.#selectedKey = input.value;
       });
     });
 
-    const createButton = htmlElement.querySelector<HTMLButtonElement>('[data-action="create-region-scene"]');
+    const createButton = htmlElement.querySelector<HTMLButtonElement>('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
-      void this.#createRegionScene();
+      void this.#createSectorScene();
     });
   }
 
-  get #selectedRegion(): TravellerRegionSelection | null {
+  get #selectedSector(): TravellerSectorSelection | null {
     return this.#results.find((result) => result.key === this.#selectedKey) ?? null;
   }
 
-  #toResultViewModel(result: TravellerRegionSelection): RegionSearchResultViewModel {
+  #toResultViewModel(result: TravellerSectorSelection): SectorSearchResultViewModel {
     return {
       key: result.key,
       name: result.name,
-      coordinateText: formatLocalize("Search.Coordinates", { x: result.regionX, y: result.regionY }),
+      coordinateText: formatLocalize("Search.Coordinates", { x: result.sectorX, y: result.sectorY }),
       tagText: result.tags.length > 0 ? result.tags.join(" · ") : localize("Search.NoTags"),
       isSelected: result.key === this.#selectedKey
     };
@@ -126,7 +126,7 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
     await this.render({ force: true });
 
     try {
-      const results = await travellerMapService.searchRegions(trimmedQuery);
+      const results = await travellerMapService.searchSectors(trimmedQuery);
       this.#results = results;
       this.#selectedKey = results[0]?.key ?? null;
       this.#error = results.length === 0 ? formatLocalize("Search.Errors.NoResults", { query: trimmedQuery }) : null;
@@ -141,11 +141,11 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
     }
   }
 
-  async #createRegionScene(): Promise<void> {
-    const selectedRegion = this.#selectedRegion;
+  async #createSectorScene(): Promise<void> {
+    const selectedSector = this.#selectedSector;
 
-    if (!selectedRegion) {
-      this.#error = localize("Search.Errors.ChooseRegion");
+    if (!selectedSector) {
+      this.#error = localize("Search.Errors.ChooseSector");
       await this.render({ force: true });
       return;
     }
@@ -155,7 +155,7 @@ export class RegionSearchApplication extends RegionSearchApplicationBase {
     await this.render({ force: true });
 
     try {
-      const scene = await createRegionScene(selectedRegion);
+      const scene = await createSectorScene(selectedSector);
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {

@@ -31,7 +31,7 @@
       <div class="traveller-scenes__results">
         {{#each results}}
           <label class="traveller-scenes__result">
-            <input type="radio" name="region" value="{{key}}" {{#if isSelected}}checked{{/if}} />
+            <input type="radio" name="sector" value="{{key}}" {{#if isSelected}}checked{{/if}} />
             <span class="traveller-scenes__result-copy">
               <strong>{{name}}</strong>
               <small>{{coordinateText}}</small>
@@ -49,7 +49,7 @@
     <button
       class="traveller-scenes__button traveller-scenes__button--primary"
       type="button"
-      data-action="create-region-scene"
+      data-action="create-sector-scene"
       {{#unless canCreate}}disabled{{/unless}}
     >
       {{#if isCreating}}{{localize "TRAVELLER_SCENES.Search.Actions.Creating"}}{{else}}{{localize "TRAVELLER_SCENES.Search.Actions.Create"}}{{/if}}

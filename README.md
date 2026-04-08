@@ -1,10 +1,10 @@
 # Traveller Scenes
 
-Foundry VTT v14 module that creates Traveller region scenes from TravellerMap poster data, then overlays a correctly aligned Traveller hex grid.
+Foundry VTT v14 module that creates Traveller sector scenes from TravellerMap poster data, then overlays a correctly aligned Traveller hex grid.
 
 ## MVP features
 
-- Search TravellerMap for a region
+- Search TravellerMap for a sector
 - Create a new Foundry scene from the selected poster
 - Align a hex grid to the poster image
 - Launch creation from the Scenes sidebar

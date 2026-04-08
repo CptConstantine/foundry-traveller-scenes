@@ -2,13 +2,15 @@
 var MODULE_ID = "traveller-scenes";
 var MODULE_TITLE = "Traveller Scenes";
 var TRAVELLER_MAP_API_BASE = "https://travellermap.com/api";
-var REGION_HEX_COLUMNS = 32;
-var REGION_HEX_ROWS = 40;
+var SECTOR_HEX_COLUMNS = 32;
+var SECTOR_HEX_ROWS = 40;
+var SUBSECTOR_HEX_COLUMNS = 8;
+var SUBSECTOR_HEX_ROWS = 10;
 var DEFAULT_GRID_DISTANCE = 1;
 var DEFAULT_GRID_UNITS = "pc";
 var DEFAULT_GRID_COLOR = "#4ac0ff";
 var POSTER_STORAGE_PATH = `assets/${MODULE_ID}/posters`;
-var REGION_SEARCH_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/region-search-app.hbs`;
+var SECTOR_SEARCH_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/sector-search-app.hbs`;
 var DEFAULT_POSTER_OPTIONS = Object.freeze({
   style: "poster",
   scale: 64,
@@ -32,10 +34,10 @@ function calculateFlatTopHexMetricsFromImage(imageWidth, imageHeight, dimensions
 
 // src/services/hexgridalignment.ts
 var DEFAULT_DIMENSIONS = {
-  columns: REGION_HEX_COLUMNS,
-  rows: REGION_HEX_ROWS
+  columns: SECTOR_HEX_COLUMNS,
+  rows: SECTOR_HEX_ROWS
 };
-function calibrateRegionGrid(image, dimensions = DEFAULT_DIMENSIONS) {
+function calibrateSectorGrid(image, dimensions = DEFAULT_DIMENSIONS) {
   const metrics = calculateFlatTopHexMetricsFromImage(image.width, image.height, dimensions);
   const verticalColumnOffset = Math.max(0, Math.round(image.height - metrics.hexHeight * dimensions.rows));
   return {
@@ -73,7 +75,7 @@ function formatLocalize(key, values = {}) {
 
 // src/services/travellermap.ts
 var TravellerMapService = class {
-  async searchRegions(query) {
+  async searchSectors(query) {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
       return [];
@@ -86,24 +88,23 @@ var TravellerMapService = class {
     }
     const payload = await response.json();
     const items = payload.Results?.Items ?? [];
-    const regions = items.map((item) => item.Region).filter((region) => Boolean(region));
     const deduped = /* @__PURE__ */ new Map();
-    for (const region of regions) {
-      const key = this.createRegionKey(region.Name, region.RegionX, region.RegionY);
-      deduped.set(key, {
-        key,
-        name: region.Name,
-        regionX: region.RegionX,
-        regionY: region.RegionY,
-        tags: (region.RegionTags ?? "").split(/\s+/).map((tag) => tag.trim()).filter(Boolean)
-      });
+    for (const item of items) {
+      const selection = this.toSectorSelection(item);
+      if (!selection) {
+        continue;
+      }
+      deduped.set(selection.key, selection);
     }
     return Array.from(deduped.values()).sort((left, right) => left.name.localeCompare(right.name));
   }
-  buildPosterUrl(region, options = {}) {
+  buildPosterUrl(sector, options = {}) {
     const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
-    url.searchParams.set("Region", region.name);
+    url.searchParams.set("sector", sector.sectorName);
+    if (sector.kind === "subsector" && sector.subsectorIndex) {
+      url.searchParams.set("subsector", sector.subsectorIndex);
+    }
     url.searchParams.set("style", resolvedOptions.style);
     url.searchParams.set("scale", String(resolvedOptions.scale));
     if (resolvedOptions.compositing) {
@@ -120,19 +121,62 @@ var TravellerMapService = class {
     }
     return url.toString();
   }
-  async getPosterImageInfo(region, options = {}) {
+  async getPosterImageInfo(sector, options = {}) {
     const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
-    const remoteUrl = this.buildPosterUrl(region, resolvedOptions);
+    const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
     const posterBlob = await this.fetchPosterBlob(remoteUrl);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
-    const cachedPath = await this.cachePosterBlob(region, resolvedOptions, posterBlob);
+    const cachedPath = await this.cachePosterBlob(sector, resolvedOptions, posterBlob);
     return {
       url: cachedPath,
       ...dimensions
     };
   }
-  createRegionKey(name, regionX, regionY) {
-    return `${name}::${regionX},${regionY}`;
+  createTypedSectorKey(type, name, location) {
+    return `${type}::${name}::${location}`;
+  }
+  toSectorSelection(item) {
+    if (item.Sector) {
+      return this.fromSectorResult(item.Sector);
+    }
+    if (item.Subsector) {
+      return this.fromSubsectorResult(item.Subsector);
+    }
+    return null;
+  }
+  fromSectorResult(sector) {
+    return {
+      key: this.createTypedSectorKey("sector", sector.Name, `${sector.SectorX},${sector.SectorY}`),
+      name: sector.Name,
+      sectorX: sector.SectorX,
+      sectorY: sector.SectorY,
+      tags: this.parseTags(sector.SectorTags),
+      kind: "sector",
+      sectorName: sector.Name,
+      dimensions: {
+        columns: SECTOR_HEX_COLUMNS,
+        rows: SECTOR_HEX_ROWS
+      }
+    };
+  }
+  fromSubsectorResult(subsector) {
+    return {
+      key: this.createTypedSectorKey("subsector", subsector.Sector, subsector.Index),
+      name: `${subsector.Name} (${subsector.Sector})`,
+      sectorX: subsector.SectorX,
+      sectorY: subsector.SectorY,
+      tags: [...this.parseTags(subsector.SectorTags), `Subsector ${subsector.Index}`],
+      kind: "subsector",
+      sectorName: subsector.Sector,
+      subsectorIndex: subsector.Index,
+      dimensions: {
+        columns: SUBSECTOR_HEX_COLUMNS,
+        rows: SUBSECTOR_HEX_ROWS
+      }
+    };
+  }
+  parseTags(tagString) {
+    return (tagString ?? "").split(/\s+/).map((tag) => tag.trim()).filter(Boolean);
   }
   async fetchPosterBlob(url) {
     const response = await fetch(url);
@@ -141,10 +185,10 @@ var TravellerMapService = class {
     }
     return await response.blob();
   }
-  async cachePosterBlob(region, options, posterBlob) {
+  async cachePosterBlob(sector, options, posterBlob) {
     const filePicker = foundry.applications.apps.FilePicker.implementation;
     const extension = this.getPosterFileExtension(posterBlob.type);
-    const fileName = `${this.slugify(region.name)}-${region.regionX}-${region.regionY}-${options.scale}-${Date.now()}.${extension}`;
+    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${options.scale}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
     await this.ensurePosterStorageDirectory(filePicker);
     const upload = await filePicker.upload(
@@ -226,20 +270,20 @@ function createLevelBackgroundData(src) {
     color: 0
   };
 }
-async function configureSceneLevel(scene, region, posterUrl) {
+async function configureSceneLevel(scene, sector, posterUrl) {
   const sceneWithLevels = scene;
   const background = createLevelBackgroundData(posterUrl);
   const existingLevel = sceneWithLevels.initialLevel ?? sceneWithLevels.firstLevel;
   if (existingLevel) {
     await existingLevel.update({
-      name: formatLocalize("Scene.Name", { name: region.name }),
+      name: formatLocalize("Scene.Name", { name: sector.name }),
       background
     });
     return existingLevel;
   }
   const [createdLevel] = await sceneWithLevels.createEmbeddedDocuments("Level", [
     {
-      name: formatLocalize("Scene.Name", { name: region.name }),
+      name: formatLocalize("Scene.Name", { name: sector.name }),
       sort: 0,
       background
     }
@@ -249,15 +293,15 @@ async function configureSceneLevel(scene, region, posterUrl) {
   }
   return createdLevel;
 }
-async function createRegionScene(region) {
+async function createSectorScene(sector) {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
   }
-  const poster = await travellerMapService.getPosterImageInfo(region);
-  const grid = calibrateRegionGrid(poster);
+  const poster = await travellerMapService.getPosterImageInfo(sector);
+  const grid = calibrateSectorGrid(poster, sector.dimensions);
   const sceneData = {
-    name: formatLocalize("Scene.Name", { name: region.name }),
-    navName: region.name,
+    name: formatLocalize("Scene.Name", { name: sector.name }),
+    navName: sector.name,
     width: grid.sceneWidth,
     height: grid.sceneHeight,
     padding: 0,
@@ -277,7 +321,7 @@ async function createRegionScene(region) {
     },
     flags: {
       [MODULE_ID]: {
-        region,
+        sector,
         alignment: grid,
         background: {
           src: poster.url,
@@ -292,7 +336,7 @@ async function createRegionScene(region) {
   }
   const level = await configureSceneLevel(
     scene,
-    region,
+    sector,
     poster.url
   );
   const levelData = level.toObject();
@@ -309,15 +353,15 @@ async function createRegionScene(region) {
   return scene;
 }
 
-// src/ui/region-search-app.ts
-var RegionSearchApplicationBase = foundry.applications.api.HandlebarsApplicationMixin(
+// src/ui/sector-search-app.ts
+var SectorSearchApplicationBase = foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 );
-var RegionSearchApplication = class extends RegionSearchApplicationBase {
+var SectorSearchApplication = class extends SectorSearchApplicationBase {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(
     super.DEFAULT_OPTIONS,
     {
-      id: `${MODULE_ID}-region-search`,
+      id: `${MODULE_ID}-sector-search`,
       classes: [MODULE_ID],
       tag: "section",
       window: {
@@ -332,7 +376,7 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
   );
   static PARTS = {
     content: {
-      template: REGION_SEARCH_TEMPLATE_PATH
+      template: SECTOR_SEARCH_TEMPLATE_PATH
     }
   };
   #query = "";
@@ -347,7 +391,7 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
       query: this.#query,
       results: this.#results.map((result) => this.#toResultViewModel(result)),
       hasResults: this.#results.length > 0,
-      canCreate: Boolean(this.#selectedRegion) && !this.#isCreating,
+      canCreate: Boolean(this.#selectedSector) && !this.#isCreating,
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
       error: this.#error
@@ -371,25 +415,25 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
       event.preventDefault();
       void this.#executeSearch();
     });
-    htmlElement.querySelectorAll('input[name="region"]').forEach((input) => {
+    htmlElement.querySelectorAll('input[name="sector"]').forEach((input) => {
       input.addEventListener("change", () => {
         this.#selectedKey = input.value;
       });
     });
-    const createButton = htmlElement.querySelector('[data-action="create-region-scene"]');
+    const createButton = htmlElement.querySelector('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
-      void this.#createRegionScene();
+      void this.#createSectorScene();
     });
   }
-  get #selectedRegion() {
+  get #selectedSector() {
     return this.#results.find((result) => result.key === this.#selectedKey) ?? null;
   }
   #toResultViewModel(result) {
     return {
       key: result.key,
       name: result.name,
-      coordinateText: formatLocalize("Search.Coordinates", { x: result.regionX, y: result.regionY }),
+      coordinateText: formatLocalize("Search.Coordinates", { x: result.sectorX, y: result.sectorY }),
       tagText: result.tags.length > 0 ? result.tags.join(" \xB7 ") : localize("Search.NoTags"),
       isSelected: result.key === this.#selectedKey
     };
@@ -407,7 +451,7 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
     this.#error = null;
     await this.render({ force: true });
     try {
-      const results = await travellerMapService.searchRegions(trimmedQuery);
+      const results = await travellerMapService.searchSectors(trimmedQuery);
       this.#results = results;
       this.#selectedKey = results[0]?.key ?? null;
       this.#error = results.length === 0 ? formatLocalize("Search.Errors.NoResults", { query: trimmedQuery }) : null;
@@ -421,10 +465,10 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
       await this.render({ force: true });
     }
   }
-  async #createRegionScene() {
-    const selectedRegion = this.#selectedRegion;
-    if (!selectedRegion) {
-      this.#error = localize("Search.Errors.ChooseRegion");
+  async #createSectorScene() {
+    const selectedSector = this.#selectedSector;
+    if (!selectedSector) {
+      this.#error = localize("Search.Errors.ChooseSector");
       await this.render({ force: true });
       return;
     }
@@ -432,7 +476,7 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
     this.#error = null;
     await this.render({ force: true });
     try {
-      const scene = await createRegionScene(selectedRegion);
+      const scene = await createSectorScene(selectedSector);
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {
@@ -449,11 +493,11 @@ var RegionSearchApplication = class extends RegionSearchApplicationBase {
 };
 
 // src/hooks.ts
-var regionSearchApplication = null;
+var sectorSearchApplication = null;
 var SIDEBAR_LAUNCHER_ATTRIBUTE = `data-${MODULE_ID}-sidebar-launcher`;
-function openRegionSearchApplication() {
-  regionSearchApplication ??= new RegionSearchApplication();
-  void regionSearchApplication.render({ force: true });
+function openSectorSearchApplication() {
+  sectorSearchApplication ??= new SectorSearchApplication();
+  void sectorSearchApplication.render({ force: true });
 }
 function injectSidebarLauncher(element) {
   if (element.querySelector(`[${SIDEBAR_LAUNCHER_ATTRIBUTE}]`)) {
@@ -472,7 +516,7 @@ function injectSidebarLauncher(element) {
   launcherLabel.textContent = localize("Sidebar.CreateScene");
   launcherButton.append(launcherLabel);
   launcherButton.addEventListener("click", () => {
-    openRegionSearchApplication();
+    openSectorSearchApplication();
   });
   actionContainer.prepend(launcherButton);
 }

@@ -4,10 +4,10 @@ import {
   DEFAULT_GRID_UNITS,
   MODULE_ID
 } from "../config/constants.js";
-import { calibrateRegionGrid } from "./hexgridalignment.js";
+import { calibrateSectorGrid } from "./hexgridalignment.js";
 import { travellerMapService } from "./travellermap.js";
 import { formatLocalize, localize } from "../utils/localization.js";
-import type { TravellerRegionSelection } from "../types/traveller.js";
+import type { TravellerSectorSelection } from "../types/traveller.js";
 
 function createLevelBackgroundData(src: string) {
   return {
@@ -20,7 +20,7 @@ function createLevelBackgroundData(src: string) {
 
 async function configureSceneLevel(
   scene: Scene,
-  region: TravellerRegionSelection,
+  sector: TravellerSectorSelection,
   posterUrl: string
 ) {
   const sceneWithLevels = scene as any;
@@ -29,7 +29,7 @@ async function configureSceneLevel(
 
   if (existingLevel) {
     await existingLevel.update({
-      name: formatLocalize("Scene.Name", { name: region.name }),
+      name: formatLocalize("Scene.Name", { name: sector.name }),
       background
     } as never);
 
@@ -38,7 +38,7 @@ async function configureSceneLevel(
 
   const [createdLevel] = (await sceneWithLevels.createEmbeddedDocuments("Level", [
     {
-      name: formatLocalize("Scene.Name", { name: region.name }),
+      name: formatLocalize("Scene.Name", { name: sector.name }),
       sort: 0,
       background
     }
@@ -51,17 +51,17 @@ async function configureSceneLevel(
   return createdLevel;
 }
 
-export async function createRegionScene(region: TravellerRegionSelection): Promise<Scene> {
+export async function createSectorScene(sector: TravellerSectorSelection): Promise<Scene> {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
   }
 
-  const poster = await travellerMapService.getPosterImageInfo(region);
-  const grid = calibrateRegionGrid(poster);
+  const poster = await travellerMapService.getPosterImageInfo(sector);
+  const grid = calibrateSectorGrid(poster, sector.dimensions);
 
   const sceneData = {
-    name: formatLocalize("Scene.Name", { name: region.name }),
-    navName: region.name,
+    name: formatLocalize("Scene.Name", { name: sector.name }),
+    navName: sector.name,
     width: grid.sceneWidth,
     height: grid.sceneHeight,
     padding: 0,
@@ -81,7 +81,7 @@ export async function createRegionScene(region: TravellerRegionSelection): Promi
     },
     flags: {
       [MODULE_ID]: {
-        region,
+        sector,
         alignment: grid,
         background: {
           src: poster.url,
@@ -98,7 +98,7 @@ export async function createRegionScene(region: TravellerRegionSelection): Promi
 
   const level = await configureSceneLevel(
     scene,
-    region,
+    sector,
     poster.url
   );
 

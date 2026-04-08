@@ -1,21 +1,21 @@
 import {
-  REGION_HEX_COLUMNS,
-  REGION_HEX_ROWS
+  SECTOR_HEX_COLUMNS,
+  SECTOR_HEX_ROWS
 } from "../config/constants.js";
 import type {
   CalibratedGridConfig,
-  RegionDimensions
+  SectorDimensions
 } from "../types/traveller.js";
 import { calculateFlatTopHexMetricsFromImage } from "../utils/geometry.js";
 
-const DEFAULT_DIMENSIONS: RegionDimensions = {
-  columns: REGION_HEX_COLUMNS,
-  rows: REGION_HEX_ROWS
+const DEFAULT_DIMENSIONS: SectorDimensions = {
+  columns: SECTOR_HEX_COLUMNS,
+  rows: SECTOR_HEX_ROWS
 };
 
-export function calibrateRegionGrid(
+export function calibrateSectorGrid(
   image: { width: number; height: number },
-  dimensions: RegionDimensions = DEFAULT_DIMENSIONS
+  dimensions: SectorDimensions = DEFAULT_DIMENSIONS
 ): CalibratedGridConfig {
   const metrics = calculateFlatTopHexMetricsFromImage(image.width, image.height, dimensions);
   const verticalColumnOffset = Math.max(0, Math.round(image.height - metrics.hexHeight * dimensions.rows));

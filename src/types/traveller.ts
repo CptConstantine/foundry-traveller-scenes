@@ -6,22 +6,36 @@ export interface TravellerMapSearchResponse {
 }
 
 export interface TravellerMapSearchItem {
-  Region?: TravellerMapRegionResult;
+  Sector?: TravellerMapSectorResult;
+  Subsector?: TravellerMapSubsectorResult;
 }
 
-export interface TravellerMapRegionResult {
+export interface TravellerMapSectorResult {
   Name: string;
-  RegionX: number;
-  RegionY: number;
-  RegionTags?: string;
+  SectorX: number;
+  SectorY: number;
+  SectorTags?: string;
 }
 
-export interface TravellerRegionSelection {
+export interface TravellerMapSubsectorResult {
+  Sector: string;
+  Index: string;
+  SectorX: number;
+  SectorY: number;
+  Name: string;
+  SectorTags?: string;
+}
+
+export interface TravellerSectorSelection {
   key: string;
   name: string;
-  regionX: number;
-  regionY: number;
+  sectorX: number;
+  sectorY: number;
   tags: string[];
+  kind: "sector" | "subsector";
+  sectorName: string;
+  subsectorIndex?: string;
+  dimensions: SectorDimensions;
 }
 
 export interface TravellerPosterOptions {
@@ -39,7 +53,7 @@ export interface PosterImageInfo {
   height: number;
 }
 
-export interface RegionDimensions {
+export interface SectorDimensions {
   columns: number;
   rows: number;
 }
@@ -57,7 +71,7 @@ export interface CalibratedGridConfig {
   rows: number;
 }
 
-export interface RegionSearchResultViewModel {
+export interface SectorSearchResultViewModel {
   key: string;
   name: string;
   coordinateText: string;
@@ -65,9 +79,9 @@ export interface RegionSearchResultViewModel {
   isSelected: boolean;
 }
 
-export interface RegionSearchApplicationContext {
+export interface SectorSearchApplicationContext {
   query: string;
-  results: RegionSearchResultViewModel[];
+  results: SectorSearchResultViewModel[];
   hasResults: boolean;
   canCreate: boolean;
   isLoading: boolean;

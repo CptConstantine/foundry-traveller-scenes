@@ -1,8 +1,8 @@
 {
   "id": "traveller-scenes",
   "title": "Traveller Scenes",
-  "description": "Generate Foundry VTT scenes from TravellerMap API.",
-  "version": "0.1.0",
+  "description": "Generate Foundry VTT sector scenes from TravellerMap API.",
+  "version": "0.1.1",
   "authors": [
     {
       "name": "CptConstantine"
@@ -11,7 +11,7 @@
   "url": "https://github.com/CptConstantine/foundry-traveller-scenes",
   "bugs": "https://github.com/CptConstantine/foundry-traveller-scenes/issues",
   "manifest": "https://github.com/CptConstantine/foundry-traveller-scenes/releases/latest/download/module.json",
-  "download": "https://github.com/CptConstantine/foundry-traveller-scenes/releases/download/v0.1.0/traveller-scenes.zip",
+  "download": "https://github.com/CptConstantine/foundry-traveller-scenes/releases/download/v0.1.1/traveller-scenes.zip",
   "readme": "README.md",
   "license": "LICENSE",
   "changelog": "https://github.com/CptConstantine/foundry-traveller-scenes/releases",
