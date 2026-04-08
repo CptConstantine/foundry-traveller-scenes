@@ -1,7 +1,9 @@
 import {
+  DEFAULT_POSTER_RENDER_OPTIONS,
   DEFAULT_POSTER_OPTIONS,
   MODULE_ID,
   POSTER_STORAGE_PATH,
+  POSTER_RENDER_OPTION_MASKS,
   SECTOR_HEX_COLUMNS,
   SECTOR_HEX_ROWS,
   SUBSECTOR_HEX_COLUMNS,
@@ -52,11 +54,15 @@ export class TravellerMapService {
     return Array.from(deduped.values()).sort((left, right) => left.name.localeCompare(right.name));
   }
 
+  resolvePosterOptions(options: Partial<TravellerPosterOptions> = {}): TravellerPosterOptions {
+    return { ...DEFAULT_POSTER_OPTIONS, ...options };
+  }
+
   buildPosterUrl(
     sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): string {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
 
     url.searchParams.set("sector", sector.sectorName);
@@ -70,6 +76,11 @@ export class TravellerMapService {
 
     if (resolvedOptions.compositing) {
       url.searchParams.set("compositing", "1");
+    }
+
+    const renderOptions = this.buildPosterRenderOptions(resolvedOptions);
+    if (renderOptions !== undefined) {
+      url.searchParams.set("options", String(renderOptions));
     }
 
     if (resolvedOptions.noGrid) {
@@ -91,7 +102,7 @@ export class TravellerMapService {
     sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<PosterImageInfo> {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
     const posterBlob = await this.fetchPosterBlob(remoteUrl);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
@@ -99,6 +110,7 @@ export class TravellerMapService {
 
     return {
       url: cachedPath,
+      posterOptions: resolvedOptions,
       ...dimensions
     };
   }
@@ -175,7 +187,17 @@ export class TravellerMapService {
   ): Promise<string> {
     const filePicker = foundry.applications.apps.FilePicker.implementation;
     const extension = this.getPosterFileExtension(posterBlob.type);
-    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${options.scale}-${Date.now()}.${extension}`;
+    const optionFingerprint = this.slugify([
+      options.style,
+      options.routes ? "routes" : "noroutes",
+      options.noGrid ? "nogrid" : "grid",
+      options.showBorders ? "borders" : "noborders",
+      options.showSectorSubsectorNames ? "sectornames" : "nosectornames",
+      options.showLabels ? "labels" : "nolabels",
+      options.compositing ? "composite" : "opaque",
+      options.milieu ?? "default"
+    ].join("-"));
+    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${optionFingerprint}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
 
     await this.ensurePosterStorageDirectory(filePicker);
@@ -227,6 +249,28 @@ export class TravellerMapService {
     }
 
     return "png";
+  }
+
+  private buildPosterRenderOptions(options: TravellerPosterOptions): number | undefined {
+    if (options.showBorders && options.showSectorSubsectorNames && options.showLabels) {
+      return undefined;
+    }
+
+    let renderOptions = DEFAULT_POSTER_RENDER_OPTIONS;
+
+    if (!options.showBorders) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.borders;
+    }
+
+    if (!options.showSectorSubsectorNames) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.sectorSubsectorNames;
+    }
+
+    if (!options.showLabels) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.labels;
+    }
+
+    return renderOptions;
   }
 
   private slugify(value: string): string {

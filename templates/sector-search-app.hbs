@@ -43,6 +43,77 @@
     {{else}}
       <p class="traveller-scenes__hint">{{localize "TRAVELLER_SCENES.Search.Empty"}}</p>
     {{/if}}
+
+    <details class="traveller-scenes__details" data-role="poster-options" {{#if posterOptions.isExpanded}}open{{/if}}>
+      <summary class="traveller-scenes__details-summary">
+        <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Search.PosterOptions.Summary"}}</span>
+        <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.SummaryHint"}}</small>
+      </summary>
+
+      <div class="traveller-scenes__details-body traveller-scenes__stack">
+        <p class="traveller-scenes__hint">{{localize "TRAVELLER_SCENES.Search.PosterOptions.Hint"}}</p>
+
+        <label class="traveller-scenes__field">
+          <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Search.PosterOptions.Style.Label"}}</span>
+          <select class="traveller-scenes__input" name="poster-style">
+            {{#each posterOptions.styleOptions}}
+              <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+        </label>
+
+        <label class="traveller-scenes__field">
+          <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Search.PosterOptions.Milieu.Label"}}</span>
+          <select class="traveller-scenes__input" name="poster-milieu">
+            {{#each posterOptions.milieuOptions}}
+              <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+        </label>
+
+        <div class="traveller-scenes__checkbox-list">
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-routes" {{#if posterOptions.routes}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Routes.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Routes.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-grid" {{#if posterOptions.showGrid}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Grid.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Grid.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-borders" {{#if posterOptions.showBorders}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Borders.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Borders.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-sector-subsector-names" {{#if posterOptions.showSectorSubsectorNames}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.SectorSubsectorNames.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.SectorSubsectorNames.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-labels" {{#if posterOptions.showLabels}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Labels.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Labels.Hint"}}</small>
+            </span>
+          </label>
+        </div>
+      </div>
+    </details>
   </section>
 
   <footer class="traveller-scenes__footer">

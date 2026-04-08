@@ -1,4 +1,4 @@
-import type { TravellerPosterOptions } from "../types/traveller.js";
+import type { PosterOptionChoice, TravellerPosterOptions } from "../types/traveller.js";
 
 export const MODULE_ID = "traveller-scenes";
 export const MODULE_TITLE = "Traveller Scenes";
@@ -22,5 +22,38 @@ export const DEFAULT_POSTER_OPTIONS: Readonly<TravellerPosterOptions> = Object.f
   scale: 64,
   compositing: true,
   noGrid: true,
-  routes: false
+  routes: false,
+  showBorders: true,
+  showSectorSubsectorNames: true,
+  showLabels: true
 });
+
+export const DEFAULT_POSTER_RENDER_OPTIONS = 9207;
+export const POSTER_RENDER_OPTION_MASKS = Object.freeze({
+  borders: 0x0030,
+  sectorSubsectorNames: 0x0004,
+  labels: 0x00c0
+});
+
+export const POSTER_STYLE_OPTIONS: ReadonlyArray<PosterOptionChoice> = Object.freeze([
+  { value: "poster", label: "Poster" },
+  { value: "print", label: "Print" },
+  { value: "atlas", label: "Atlas" },
+  { value: "candy", label: "Candy" },
+  { value: "draft", label: "Draft" },
+  { value: "fasa", label: "FASA" },
+  { value: "terminal", label: "Terminal" },
+  { value: "mongoose", label: "Mongoose" }
+]);
+
+export const POSTER_MILIEU_OPTIONS: ReadonlyArray<string> = Object.freeze([
+  "M1105",
+  "IW",
+  "M0",
+  "M600",
+  "M990",
+  "M1120",
+  "M1201",
+  "M1248",
+  "M1900"
+]);

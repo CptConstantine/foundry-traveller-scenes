@@ -16,8 +16,38 @@ var DEFAULT_POSTER_OPTIONS = Object.freeze({
   scale: 64,
   compositing: true,
   noGrid: true,
-  routes: false
+  routes: false,
+  showBorders: true,
+  showSectorSubsectorNames: true,
+  showLabels: true
 });
+var DEFAULT_POSTER_RENDER_OPTIONS = 9207;
+var POSTER_RENDER_OPTION_MASKS = Object.freeze({
+  borders: 48,
+  sectorSubsectorNames: 4,
+  labels: 192
+});
+var POSTER_STYLE_OPTIONS = Object.freeze([
+  { value: "poster", label: "Poster" },
+  { value: "print", label: "Print" },
+  { value: "atlas", label: "Atlas" },
+  { value: "candy", label: "Candy" },
+  { value: "draft", label: "Draft" },
+  { value: "fasa", label: "FASA" },
+  { value: "terminal", label: "Terminal" },
+  { value: "mongoose", label: "Mongoose" }
+]);
+var POSTER_MILIEU_OPTIONS = Object.freeze([
+  "M1105",
+  "IW",
+  "M0",
+  "M600",
+  "M990",
+  "M1120",
+  "M1201",
+  "M1248",
+  "M1900"
+]);
 
 // src/utils/geometry.ts
 var HEX_HEIGHT_TO_WIDTH_RATIO = Math.sqrt(3) / 2;
@@ -98,8 +128,11 @@ var TravellerMapService = class {
     }
     return Array.from(deduped.values()).sort((left, right) => left.name.localeCompare(right.name));
   }
+  resolvePosterOptions(options = {}) {
+    return { ...DEFAULT_POSTER_OPTIONS, ...options };
+  }
   buildPosterUrl(sector, options = {}) {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
     url.searchParams.set("sector", sector.sectorName);
     if (sector.kind === "subsector" && sector.subsectorIndex) {
@@ -109,6 +142,10 @@ var TravellerMapService = class {
     url.searchParams.set("scale", String(resolvedOptions.scale));
     if (resolvedOptions.compositing) {
       url.searchParams.set("compositing", "1");
+    }
+    const renderOptions = this.buildPosterRenderOptions(resolvedOptions);
+    if (renderOptions !== void 0) {
+      url.searchParams.set("options", String(renderOptions));
     }
     if (resolvedOptions.noGrid) {
       url.searchParams.set("nogrid", "1");
@@ -122,13 +159,14 @@ var TravellerMapService = class {
     return url.toString();
   }
   async getPosterImageInfo(sector, options = {}) {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
     const posterBlob = await this.fetchPosterBlob(remoteUrl);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
     const cachedPath = await this.cachePosterBlob(sector, resolvedOptions, posterBlob);
     return {
       url: cachedPath,
+      posterOptions: resolvedOptions,
       ...dimensions
     };
   }
@@ -188,7 +226,17 @@ var TravellerMapService = class {
   async cachePosterBlob(sector, options, posterBlob) {
     const filePicker = foundry.applications.apps.FilePicker.implementation;
     const extension = this.getPosterFileExtension(posterBlob.type);
-    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${options.scale}-${Date.now()}.${extension}`;
+    const optionFingerprint = this.slugify([
+      options.style,
+      options.routes ? "routes" : "noroutes",
+      options.noGrid ? "nogrid" : "grid",
+      options.showBorders ? "borders" : "noborders",
+      options.showSectorSubsectorNames ? "sectornames" : "nosectornames",
+      options.showLabels ? "labels" : "nolabels",
+      options.compositing ? "composite" : "opaque",
+      options.milieu ?? "default"
+    ].join("-"));
+    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${optionFingerprint}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
     await this.ensurePosterStorageDirectory(filePicker);
     const upload = await filePicker.upload(
@@ -227,6 +275,22 @@ var TravellerMapService = class {
       return "webp";
     }
     return "png";
+  }
+  buildPosterRenderOptions(options) {
+    if (options.showBorders && options.showSectorSubsectorNames && options.showLabels) {
+      return void 0;
+    }
+    let renderOptions = DEFAULT_POSTER_RENDER_OPTIONS;
+    if (!options.showBorders) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.borders;
+    }
+    if (!options.showSectorSubsectorNames) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.sectorSubsectorNames;
+    }
+    if (!options.showLabels) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.labels;
+    }
+    return renderOptions;
   }
   slugify(value) {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
@@ -293,11 +357,11 @@ async function configureSceneLevel(scene, sector, posterUrl) {
   }
   return createdLevel;
 }
-async function createSectorScene(sector) {
+async function createSectorScene(sector, posterOptions = {}) {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
   }
-  const poster = await travellerMapService.getPosterImageInfo(sector);
+  const poster = await travellerMapService.getPosterImageInfo(sector, posterOptions);
   const grid = calibrateSectorGrid(poster, sector.dimensions);
   const sceneData = {
     name: formatLocalize("Scene.Name", { name: sector.name }),
@@ -322,6 +386,7 @@ async function createSectorScene(sector) {
     flags: {
       [MODULE_ID]: {
         sector,
+        posterOptions: poster.posterOptions,
         alignment: grid,
         background: {
           src: poster.url,
@@ -385,6 +450,8 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
   #isLoading = false;
   #isCreating = false;
   #error = null;
+  #posterOptions = { ...DEFAULT_POSTER_OPTIONS };
+  #posterOptionsExpanded = false;
   async _prepareContext(options) {
     await super._prepareContext(options);
     const context = {
@@ -394,7 +461,8 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       canCreate: Boolean(this.#selectedSector) && !this.#isCreating,
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
-      error: this.#error
+      error: this.#error,
+      posterOptions: this.#toPosterOptionsViewModel()
     };
     return context;
   }
@@ -420,6 +488,39 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
         this.#selectedKey = input.value;
       });
     });
+    const posterOptionsDetails = htmlElement.querySelector('[data-role="poster-options"]');
+    posterOptionsDetails?.addEventListener("toggle", () => {
+      this.#posterOptionsExpanded = posterOptionsDetails.open;
+    });
+    const styleSelect = htmlElement.querySelector('select[name="poster-style"]');
+    styleSelect?.addEventListener("change", (event) => {
+      this.#posterOptions.style = event.currentTarget.value;
+    });
+    const milieuSelect = htmlElement.querySelector('select[name="poster-milieu"]');
+    milieuSelect?.addEventListener("change", (event) => {
+      const selectedMilieu = event.currentTarget.value.trim();
+      this.#posterOptions.milieu = selectedMilieu || void 0;
+    });
+    const routesInput = htmlElement.querySelector('input[name="poster-routes"]');
+    routesInput?.addEventListener("change", (event) => {
+      this.#posterOptions.routes = event.currentTarget.checked;
+    });
+    const gridInput = htmlElement.querySelector('input[name="poster-show-grid"]');
+    gridInput?.addEventListener("change", (event) => {
+      this.#posterOptions.noGrid = !event.currentTarget.checked;
+    });
+    const bordersInput = htmlElement.querySelector('input[name="poster-show-borders"]');
+    bordersInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showBorders = event.currentTarget.checked;
+    });
+    const sectorSubsectorNamesInput = htmlElement.querySelector('input[name="poster-show-sector-subsector-names"]');
+    sectorSubsectorNamesInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showSectorSubsectorNames = event.currentTarget.checked;
+    });
+    const labelsInput = htmlElement.querySelector('input[name="poster-show-labels"]');
+    labelsInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showLabels = event.currentTarget.checked;
+    });
     const createButton = htmlElement.querySelector('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -437,6 +538,31 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       tagText: result.tags.length > 0 ? result.tags.join(" \xB7 ") : localize("Search.NoTags"),
       isSelected: result.key === this.#selectedKey
     };
+  }
+  #toPosterOptionsViewModel() {
+    const defaultMilieuOption = {
+      value: "",
+      label: localize("Search.PosterOptions.Milieu.DefaultOption")
+    };
+    return {
+      styleOptions: this.#toChoiceViewModels(POSTER_STYLE_OPTIONS, this.#posterOptions.style),
+      milieuOptions: this.#toChoiceViewModels(
+        [defaultMilieuOption, ...POSTER_MILIEU_OPTIONS.map((milieu) => ({ value: milieu, label: milieu }))],
+        this.#posterOptions.milieu ?? ""
+      ),
+      routes: this.#posterOptions.routes,
+      showGrid: !this.#posterOptions.noGrid,
+      showBorders: this.#posterOptions.showBorders,
+      showSectorSubsectorNames: this.#posterOptions.showSectorSubsectorNames,
+      showLabels: this.#posterOptions.showLabels,
+      isExpanded: this.#posterOptionsExpanded
+    };
+  }
+  #toChoiceViewModels(options, selectedValue) {
+    return options.map((option) => ({
+      ...option,
+      selected: option.value === selectedValue
+    }));
   }
   async #executeSearch() {
     const trimmedQuery = this.#query.trim();
@@ -476,7 +602,10 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
     this.#error = null;
     await this.render({ force: true });
     try {
-      const scene = await createSectorScene(selectedSector);
+      const scene = await createSectorScene(selectedSector, {
+        ...this.#posterOptions,
+        compositing: true
+      });
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {
