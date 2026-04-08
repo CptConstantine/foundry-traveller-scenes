@@ -52,11 +52,15 @@ export class TravellerMapService {
     return Array.from(deduped.values()).sort((left, right) => left.name.localeCompare(right.name));
   }
 
+  resolvePosterOptions(options: Partial<TravellerPosterOptions> = {}): TravellerPosterOptions {
+    return { ...DEFAULT_POSTER_OPTIONS, ...options };
+  }
+
   buildPosterUrl(
     sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): string {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
 
     url.searchParams.set("sector", sector.sectorName);
@@ -91,7 +95,7 @@ export class TravellerMapService {
     sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<PosterImageInfo> {
-    const resolvedOptions = { ...DEFAULT_POSTER_OPTIONS, ...options };
+    const resolvedOptions = this.resolvePosterOptions(options);
     const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
     const posterBlob = await this.fetchPosterBlob(remoteUrl);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
@@ -99,6 +103,7 @@ export class TravellerMapService {
 
     return {
       url: cachedPath,
+      posterOptions: resolvedOptions,
       ...dimensions
     };
   }
@@ -175,7 +180,14 @@ export class TravellerMapService {
   ): Promise<string> {
     const filePicker = foundry.applications.apps.FilePicker.implementation;
     const extension = this.getPosterFileExtension(posterBlob.type);
-    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${options.scale}-${Date.now()}.${extension}`;
+    const optionFingerprint = this.slugify([
+      options.style,
+      options.routes ? "routes" : "noroutes",
+      options.noGrid ? "nogrid" : "grid",
+      options.compositing ? "composite" : "opaque",
+      options.milieu ?? "default"
+    ].join("-"));
+    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${optionFingerprint}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
 
     await this.ensurePosterStorageDirectory(filePicker);

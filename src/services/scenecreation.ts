@@ -7,7 +7,7 @@ import {
 import { calibrateSectorGrid } from "./hexgridalignment.js";
 import { travellerMapService } from "./travellermap.js";
 import { formatLocalize, localize } from "../utils/localization.js";
-import type { TravellerSectorSelection } from "../types/traveller.js";
+import type { TravellerPosterOptions, TravellerSectorSelection } from "../types/traveller.js";
 
 function createLevelBackgroundData(src: string) {
   return {
@@ -51,12 +51,15 @@ async function configureSceneLevel(
   return createdLevel;
 }
 
-export async function createSectorScene(sector: TravellerSectorSelection): Promise<Scene> {
+export async function createSectorScene(
+  sector: TravellerSectorSelection,
+  posterOptions: Partial<TravellerPosterOptions> = {}
+): Promise<Scene> {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
   }
 
-  const poster = await travellerMapService.getPosterImageInfo(sector);
+  const poster = await travellerMapService.getPosterImageInfo(sector, posterOptions);
   const grid = calibrateSectorGrid(poster, sector.dimensions);
 
   const sceneData = {
@@ -82,6 +85,7 @@ export async function createSectorScene(sector: TravellerSectorSelection): Promi
     flags: {
       [MODULE_ID]: {
         sector,
+        posterOptions: poster.posterOptions,
         alignment: grid,
         background: {
           src: poster.url,

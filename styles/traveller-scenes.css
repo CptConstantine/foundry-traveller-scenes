@@ -79,6 +79,58 @@
   color: var(--traveller-scenes-muted);
 }
 
+.traveller-scenes__details {
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.5rem;
+  background: var(--traveller-scenes-panel);
+}
+
+.traveller-scenes__details-summary {
+  cursor: pointer;
+  padding: 0.75rem;
+}
+
+.traveller-scenes__details-summary small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--traveller-scenes-muted);
+}
+
+.traveller-scenes__details[open] .traveller-scenes__details-summary {
+  border-bottom: 1px solid var(--traveller-scenes-border);
+}
+
+.traveller-scenes__details-body {
+  padding: 0.75rem;
+}
+
+.traveller-scenes__checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.traveller-scenes__checkbox {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.5rem;
+  background: var(--traveller-scenes-panel-alt);
+}
+
+.traveller-scenes__checkbox-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.traveller-scenes__checkbox-copy small {
+  color: var(--traveller-scenes-muted);
+}
+
 .traveller-scenes__footer {
   display: flex;
   justify-content: flex-end;

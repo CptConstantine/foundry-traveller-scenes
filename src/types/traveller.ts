@@ -47,10 +47,20 @@ export interface TravellerPosterOptions {
   milieu?: string;
 }
 
+export interface PosterOptionChoice {
+  value: string;
+  label: string;
+}
+
+export interface PosterOptionChoiceViewModel extends PosterOptionChoice {
+  selected: boolean;
+}
+
 export interface PosterImageInfo {
   url: string;
   width: number;
   height: number;
+  posterOptions: TravellerPosterOptions;
 }
 
 export interface SectorDimensions {
@@ -79,6 +89,14 @@ export interface SectorSearchResultViewModel {
   isSelected: boolean;
 }
 
+export interface SectorSearchPosterOptionsViewModel {
+  styleOptions: PosterOptionChoiceViewModel[];
+  milieuOptions: PosterOptionChoiceViewModel[];
+  routes: boolean;
+  showGrid: boolean;
+  isExpanded: boolean;
+}
+
 export interface SectorSearchApplicationContext {
   query: string;
   results: SectorSearchResultViewModel[];
@@ -87,4 +105,5 @@ export interface SectorSearchApplicationContext {
   isLoading: boolean;
   isCreating: boolean;
   error: string | null;
+  posterOptions: SectorSearchPosterOptionsViewModel;
 }

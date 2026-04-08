@@ -1,10 +1,20 @@
-import { MODULE_ID, SECTOR_SEARCH_TEMPLATE_PATH } from "../config/constants.js";
+import {
+  DEFAULT_POSTER_OPTIONS,
+  MODULE_ID,
+  POSTER_MILIEU_OPTIONS,
+  POSTER_STYLE_OPTIONS,
+  SECTOR_SEARCH_TEMPLATE_PATH
+} from "../config/constants.js";
 import { createSectorScene } from "../services/scenecreation.js";
 import { travellerMapService } from "../services/travellermap.js";
 import { formatLocalize, localize } from "../utils/localization.js";
 import type {
+  PosterOptionChoice,
+  PosterOptionChoiceViewModel,
   SectorSearchApplicationContext,
+  SectorSearchPosterOptionsViewModel,
   SectorSearchResultViewModel,
+  TravellerPosterOptions,
   TravellerSectorSelection
 } from "../types/traveller.js";
 
@@ -42,6 +52,8 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
   #isLoading = false;
   #isCreating = false;
   #error: string | null = null;
+  #posterOptions: TravellerPosterOptions = { ...DEFAULT_POSTER_OPTIONS };
+  #posterOptionsExpanded = false;
 
   protected override async _prepareContext(options: never): Promise<any> {
     await super._prepareContext(options as never);
@@ -53,7 +65,8 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       canCreate: Boolean(this.#selectedSector) && !this.#isCreating,
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
-      error: this.#error
+      error: this.#error,
+      posterOptions: this.#toPosterOptionsViewModel()
     };
 
     return context;
@@ -89,6 +102,32 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       });
     });
 
+    const posterOptionsDetails = htmlElement.querySelector<HTMLDetailsElement>('[data-role="poster-options"]');
+    posterOptionsDetails?.addEventListener("toggle", () => {
+      this.#posterOptionsExpanded = posterOptionsDetails.open;
+    });
+
+    const styleSelect = htmlElement.querySelector<HTMLSelectElement>('select[name="poster-style"]');
+    styleSelect?.addEventListener("change", (event) => {
+      this.#posterOptions.style = (event.currentTarget as HTMLSelectElement).value;
+    });
+
+    const milieuSelect = htmlElement.querySelector<HTMLSelectElement>('select[name="poster-milieu"]');
+    milieuSelect?.addEventListener("change", (event) => {
+      const selectedMilieu = (event.currentTarget as HTMLSelectElement).value.trim();
+      this.#posterOptions.milieu = selectedMilieu || undefined;
+    });
+
+    const routesInput = htmlElement.querySelector<HTMLInputElement>('input[name="poster-routes"]');
+    routesInput?.addEventListener("change", (event) => {
+      this.#posterOptions.routes = (event.currentTarget as HTMLInputElement).checked;
+    });
+
+    const gridInput = htmlElement.querySelector<HTMLInputElement>('input[name="poster-show-grid"]');
+    gridInput?.addEventListener("change", (event) => {
+      this.#posterOptions.noGrid = !(event.currentTarget as HTMLInputElement).checked;
+    });
+
     const createButton = htmlElement.querySelector<HTMLButtonElement>('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -108,6 +147,34 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       tagText: result.tags.length > 0 ? result.tags.join(" · ") : localize("Search.NoTags"),
       isSelected: result.key === this.#selectedKey
     };
+  }
+
+  #toPosterOptionsViewModel(): SectorSearchPosterOptionsViewModel {
+    const defaultMilieuOption: PosterOptionChoice = {
+      value: "",
+      label: localize("Search.PosterOptions.Milieu.DefaultOption")
+    };
+
+    return {
+      styleOptions: this.#toChoiceViewModels(POSTER_STYLE_OPTIONS, this.#posterOptions.style),
+      milieuOptions: this.#toChoiceViewModels(
+        [defaultMilieuOption, ...POSTER_MILIEU_OPTIONS.map((milieu) => ({ value: milieu, label: milieu }))],
+        this.#posterOptions.milieu ?? ""
+      ),
+      routes: this.#posterOptions.routes,
+      showGrid: !this.#posterOptions.noGrid,
+      isExpanded: this.#posterOptionsExpanded
+    };
+  }
+
+  #toChoiceViewModels(
+    options: ReadonlyArray<PosterOptionChoice>,
+    selectedValue: string
+  ): PosterOptionChoiceViewModel[] {
+    return options.map((option) => ({
+      ...option,
+      selected: option.value === selectedValue
+    }));
   }
 
   async #executeSearch(): Promise<void> {
@@ -155,7 +222,10 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
     await this.render({ force: true });
 
     try {
-      const scene = await createSectorScene(selectedSector);
+      const scene = await createSectorScene(selectedSector, {
+        ...this.#posterOptions,
+        compositing: true
+      });
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {

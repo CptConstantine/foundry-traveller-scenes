@@ -10,6 +10,26 @@
       "Placeholder": "Spinward Marches",
       "Hint": "Search TravellerMap for a sector or subsector, then create a scene that uses the poster image as the background with a matching Traveller hex grid overlaid in Foundry.",
       "Empty": "No sectors loaded yet. Try a search like Spinward Marches.",
+      "PosterOptions": {
+        "Summary": "Poster options",
+        "SummaryHint": "Choose the TravellerMap poster style and overlays for the generated scene.",
+        "Hint": "These settings change the TravellerMap poster used as the scene background. Scale and rotation stay fixed in this pass to preserve grid alignment.",
+        "Style": {
+          "Label": "Style"
+        },
+        "Milieu": {
+          "Label": "Milieu",
+          "DefaultOption": "TravellerMap default (M1105)"
+        },
+        "Routes": {
+          "Label": "Show routes",
+          "Hint": "Display TravellerMap route overlays on the poster."
+        },
+        "Grid": {
+          "Label": "Show TravellerMap grid",
+          "Hint": "Render TravellerMap's own grid beneath Foundry's aligned hex grid."
+        }
+      },
       "Status": {
         "Searching": "Searching TravellerMap…"
       },
