@@ -2,14 +2,14 @@
   "TRAVELLER_SCENES": {
     "ModuleTitle": "Traveller Scenes",
     "Sidebar": {
-      "CreateScene": "Create Traveller Sector"
+      "CreateScene": "Create Traveller Scene"
     },
     "Search": {
-      "WindowTitle": "Traveller sector search",
-      "Label": "sector search",
+      "WindowTitle": "Traveller map search",
+      "Label": "sector or subsector search",
       "Placeholder": "Spinward Marches",
       "Hint": "Search TravellerMap for a sector or subsector, then create a scene that uses the poster image as the background with a matching Traveller hex grid overlaid in Foundry.",
-      "Empty": "No sectors loaded yet. Try a search like Spinward Marches.",
+      "Empty": "No locations loaded yet. Try a search like Spinward Marches or Regina.",
       "PosterOptions": {
         "Summary": "Poster options",
         "SummaryHint": "Choose the TravellerMap poster style and overlays for the generated scene.",
@@ -50,16 +50,16 @@
         "Create": "Create scene",
         "Creating": "Creating scene…"
       },
-      "Coordinates": "sector {x}, {y}",
+      "Coordinates": "sector coordinates {x}, {y}",
       "NoTags": "No TravellerMap tags",
       "Errors": {
-        "EnterQuery": "Enter a sector name to search TravellerMap.",
-        "NoResults": "No sectors found for “{query}”.",
-        "ChooseSector": "Choose a sector before creating a scene."
+        "EnterQuery": "Enter a sector or subsector name to search TravellerMap.",
+        "NoResults": "No sectors or subsectors found for “{query}”.",
+        "ChooseSector": "Choose a sector or subsector before creating a scene."
       }
     },
     "Scene": {
-      "Name": "{name} sector"
+      "Name": "{name}"
     },
     "Notifications": {
       "CreatedScene": "Created scene: {name}"

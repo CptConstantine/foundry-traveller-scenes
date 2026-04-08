@@ -1,7 +1,7 @@
 {
   "id": "traveller-scenes",
   "title": "Traveller Scenes",
-  "description": "Generate Foundry VTT sector scenes from TravellerMap API.",
+  "description": "Generate Foundry VTT sector and subsector scenes from TravellerMap API.",
   "version": "0.1.2",
   "authors": [
     {

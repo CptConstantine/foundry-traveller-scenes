@@ -197,7 +197,13 @@ export class TravellerMapService {
       options.compositing ? "composite" : "opaque",
       options.milieu ?? "default"
     ].join("-"));
-    const fileName = `${this.slugify(sector.name)}-${sector.sectorX}-${sector.sectorY}-${optionFingerprint}-${Date.now()}.${extension}`;
+    const selectionFingerprint = this.slugify([
+      sector.kind,
+      sector.sectorName,
+      sector.subsectorIndex ?? "full",
+      sector.name
+    ].join("-"));
+    const fileName = `${selectionFingerprint}-${sector.sectorX}-${sector.sectorY}-${optionFingerprint}-${Date.now()}.${extension}`;
     const file = new File([posterBlob], fileName, { type: posterBlob.type || `image/${extension}` });
 
     await this.ensurePosterStorageDirectory(filePicker);
