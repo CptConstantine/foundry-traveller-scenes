@@ -16,7 +16,16 @@ var DEFAULT_POSTER_OPTIONS = Object.freeze({
   scale: 64,
   compositing: true,
   noGrid: true,
-  routes: false
+  routes: false,
+  showBorders: true,
+  showSectorSubsectorNames: true,
+  showLabels: true
+});
+var DEFAULT_POSTER_RENDER_OPTIONS = 9207;
+var POSTER_RENDER_OPTION_MASKS = Object.freeze({
+  borders: 48,
+  sectorSubsectorNames: 4,
+  labels: 192
 });
 var POSTER_STYLE_OPTIONS = Object.freeze([
   { value: "poster", label: "Poster" },
@@ -134,6 +143,10 @@ var TravellerMapService = class {
     if (resolvedOptions.compositing) {
       url.searchParams.set("compositing", "1");
     }
+    const renderOptions = this.buildPosterRenderOptions(resolvedOptions);
+    if (renderOptions !== void 0) {
+      url.searchParams.set("options", String(renderOptions));
+    }
     if (resolvedOptions.noGrid) {
       url.searchParams.set("nogrid", "1");
     }
@@ -217,6 +230,9 @@ var TravellerMapService = class {
       options.style,
       options.routes ? "routes" : "noroutes",
       options.noGrid ? "nogrid" : "grid",
+      options.showBorders ? "borders" : "noborders",
+      options.showSectorSubsectorNames ? "sectornames" : "nosectornames",
+      options.showLabels ? "labels" : "nolabels",
       options.compositing ? "composite" : "opaque",
       options.milieu ?? "default"
     ].join("-"));
@@ -259,6 +275,22 @@ var TravellerMapService = class {
       return "webp";
     }
     return "png";
+  }
+  buildPosterRenderOptions(options) {
+    if (options.showBorders && options.showSectorSubsectorNames && options.showLabels) {
+      return void 0;
+    }
+    let renderOptions = DEFAULT_POSTER_RENDER_OPTIONS;
+    if (!options.showBorders) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.borders;
+    }
+    if (!options.showSectorSubsectorNames) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.sectorSubsectorNames;
+    }
+    if (!options.showLabels) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.labels;
+    }
+    return renderOptions;
   }
   slugify(value) {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
@@ -477,6 +509,18 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
     gridInput?.addEventListener("change", (event) => {
       this.#posterOptions.noGrid = !event.currentTarget.checked;
     });
+    const bordersInput = htmlElement.querySelector('input[name="poster-show-borders"]');
+    bordersInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showBorders = event.currentTarget.checked;
+    });
+    const sectorSubsectorNamesInput = htmlElement.querySelector('input[name="poster-show-sector-subsector-names"]');
+    sectorSubsectorNamesInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showSectorSubsectorNames = event.currentTarget.checked;
+    });
+    const labelsInput = htmlElement.querySelector('input[name="poster-show-labels"]');
+    labelsInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showLabels = event.currentTarget.checked;
+    });
     const createButton = htmlElement.querySelector('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -508,6 +552,9 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       ),
       routes: this.#posterOptions.routes,
       showGrid: !this.#posterOptions.noGrid,
+      showBorders: this.#posterOptions.showBorders,
+      showSectorSubsectorNames: this.#posterOptions.showSectorSubsectorNames,
+      showLabels: this.#posterOptions.showLabels,
       isExpanded: this.#posterOptionsExpanded
     };
   }

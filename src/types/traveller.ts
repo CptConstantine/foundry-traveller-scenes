@@ -44,6 +44,9 @@ export interface TravellerPosterOptions {
   compositing: boolean;
   noGrid: boolean;
   routes: boolean;
+  showBorders: boolean;
+  showSectorSubsectorNames: boolean;
+  showLabels: boolean;
   milieu?: string;
 }
 
@@ -94,6 +97,9 @@ export interface SectorSearchPosterOptionsViewModel {
   milieuOptions: PosterOptionChoiceViewModel[];
   routes: boolean;
   showGrid: boolean;
+  showBorders: boolean;
+  showSectorSubsectorNames: boolean;
+  showLabels: boolean;
   isExpanded: boolean;
 }
 

@@ -28,6 +28,18 @@
         "Grid": {
           "Label": "Show TravellerMap grid",
           "Hint": "Render TravellerMap's own grid beneath Foundry's aligned hex grid."
+        },
+        "Borders": {
+          "Label": "Show borders",
+          "Hint": "Display major and minor region borders on the TravellerMap poster."
+        },
+        "SectorSubsectorNames": {
+          "Label": "Show sector/subsector names",
+          "Hint": "Display TravellerMap sector and subsector names on the poster."
+        },
+        "Labels": {
+          "Label": "Show labels",
+          "Hint": "Display major and minor region labels on the TravellerMap poster."
         }
       },
       "Status": {

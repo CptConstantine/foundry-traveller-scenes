@@ -1,7 +1,9 @@
 import {
+  DEFAULT_POSTER_RENDER_OPTIONS,
   DEFAULT_POSTER_OPTIONS,
   MODULE_ID,
   POSTER_STORAGE_PATH,
+  POSTER_RENDER_OPTION_MASKS,
   SECTOR_HEX_COLUMNS,
   SECTOR_HEX_ROWS,
   SUBSECTOR_HEX_COLUMNS,
@@ -74,6 +76,11 @@ export class TravellerMapService {
 
     if (resolvedOptions.compositing) {
       url.searchParams.set("compositing", "1");
+    }
+
+    const renderOptions = this.buildPosterRenderOptions(resolvedOptions);
+    if (renderOptions !== undefined) {
+      url.searchParams.set("options", String(renderOptions));
     }
 
     if (resolvedOptions.noGrid) {
@@ -184,6 +191,9 @@ export class TravellerMapService {
       options.style,
       options.routes ? "routes" : "noroutes",
       options.noGrid ? "nogrid" : "grid",
+      options.showBorders ? "borders" : "noborders",
+      options.showSectorSubsectorNames ? "sectornames" : "nosectornames",
+      options.showLabels ? "labels" : "nolabels",
       options.compositing ? "composite" : "opaque",
       options.milieu ?? "default"
     ].join("-"));
@@ -239,6 +249,28 @@ export class TravellerMapService {
     }
 
     return "png";
+  }
+
+  private buildPosterRenderOptions(options: TravellerPosterOptions): number | undefined {
+    if (options.showBorders && options.showSectorSubsectorNames && options.showLabels) {
+      return undefined;
+    }
+
+    let renderOptions = DEFAULT_POSTER_RENDER_OPTIONS;
+
+    if (!options.showBorders) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.borders;
+    }
+
+    if (!options.showSectorSubsectorNames) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.sectorSubsectorNames;
+    }
+
+    if (!options.showLabels) {
+      renderOptions &= ~POSTER_RENDER_OPTION_MASKS.labels;
+    }
+
+    return renderOptions;
   }
 
   private slugify(value: string): string {

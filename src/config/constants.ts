@@ -22,7 +22,17 @@ export const DEFAULT_POSTER_OPTIONS: Readonly<TravellerPosterOptions> = Object.f
   scale: 64,
   compositing: true,
   noGrid: true,
-  routes: false
+  routes: false,
+  showBorders: true,
+  showSectorSubsectorNames: true,
+  showLabels: true
+});
+
+export const DEFAULT_POSTER_RENDER_OPTIONS = 9207;
+export const POSTER_RENDER_OPTION_MASKS = Object.freeze({
+  borders: 0x0030,
+  sectorSubsectorNames: 0x0004,
+  labels: 0x00c0
 });
 
 export const POSTER_STYLE_OPTIONS: ReadonlyArray<PosterOptionChoice> = Object.freeze([

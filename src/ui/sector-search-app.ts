@@ -128,6 +128,21 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       this.#posterOptions.noGrid = !(event.currentTarget as HTMLInputElement).checked;
     });
 
+    const bordersInput = htmlElement.querySelector<HTMLInputElement>('input[name="poster-show-borders"]');
+    bordersInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showBorders = (event.currentTarget as HTMLInputElement).checked;
+    });
+
+    const sectorSubsectorNamesInput = htmlElement.querySelector<HTMLInputElement>('input[name="poster-show-sector-subsector-names"]');
+    sectorSubsectorNamesInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showSectorSubsectorNames = (event.currentTarget as HTMLInputElement).checked;
+    });
+
+    const labelsInput = htmlElement.querySelector<HTMLInputElement>('input[name="poster-show-labels"]');
+    labelsInput?.addEventListener("change", (event) => {
+      this.#posterOptions.showLabels = (event.currentTarget as HTMLInputElement).checked;
+    });
+
     const createButton = htmlElement.querySelector<HTMLButtonElement>('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -163,6 +178,9 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       ),
       routes: this.#posterOptions.routes,
       showGrid: !this.#posterOptions.noGrid,
+      showBorders: this.#posterOptions.showBorders,
+      showSectorSubsectorNames: this.#posterOptions.showSectorSubsectorNames,
+      showLabels: this.#posterOptions.showLabels,
       isExpanded: this.#posterOptionsExpanded
     };
   }

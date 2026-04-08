@@ -87,6 +87,30 @@
               <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Grid.Hint"}}</small>
             </span>
           </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-borders" {{#if posterOptions.showBorders}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Borders.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Borders.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-sector-subsector-names" {{#if posterOptions.showSectorSubsectorNames}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.SectorSubsectorNames.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.SectorSubsectorNames.Hint"}}</small>
+            </span>
+          </label>
+
+          <label class="traveller-scenes__checkbox">
+            <input type="checkbox" name="poster-show-labels" {{#if posterOptions.showLabels}}checked{{/if}} />
+            <span class="traveller-scenes__checkbox-copy">
+              <strong>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Labels.Label"}}</strong>
+              <small>{{localize "TRAVELLER_SCENES.Search.PosterOptions.Labels.Hint"}}</small>
+            </span>
+          </label>
         </div>
       </div>
     </details>
