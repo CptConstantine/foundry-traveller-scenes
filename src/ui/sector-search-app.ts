@@ -1,5 +1,6 @@
 import {
   DEFAULT_POSTER_OPTIONS,
+  DEFAULT_SYSTEM_NOTE_OPTIONS,
   MODULE_ID,
   POSTER_MILIEU_OPTIONS,
   POSTER_STYLE_OPTIONS,
@@ -14,8 +15,10 @@ import type {
   SectorSearchApplicationContext,
   SectorSearchPosterOptionsViewModel,
   SectorSearchResultViewModel,
+  SectorSearchSystemNotesViewModel,
   TravellerPosterOptions,
-  TravellerSectorSelection
+  TravellerSectorSelection,
+  TravellerSystemNoteOptions
 } from "../types/traveller.js";
 
 const SectorSearchApplicationBase = foundry.applications.api.HandlebarsApplicationMixin(
@@ -53,6 +56,7 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
   #isCreating = false;
   #error: string | null = null;
   #posterOptions: TravellerPosterOptions = { ...DEFAULT_POSTER_OPTIONS };
+  #systemNoteOptions: TravellerSystemNoteOptions = { ...DEFAULT_SYSTEM_NOTE_OPTIONS };
   #posterOptionsExpanded = false;
 
   protected override async _prepareContext(options: never): Promise<any> {
@@ -66,7 +70,8 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
       error: this.#error,
-      posterOptions: this.#toPosterOptionsViewModel()
+      posterOptions: this.#toPosterOptionsViewModel(),
+      systemNotes: this.#toSystemNotesViewModel()
     };
 
     return context;
@@ -143,6 +148,11 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       this.#posterOptions.showLabels = (event.currentTarget as HTMLInputElement).checked;
     });
 
+    const systemNotesInput = htmlElement.querySelector<HTMLInputElement>('input[name="generate-system-notes"]');
+    systemNotesInput?.addEventListener("change", (event) => {
+      this.#systemNoteOptions.generateSystemNotes = (event.currentTarget as HTMLInputElement).checked;
+    });
+
     const createButton = htmlElement.querySelector<HTMLButtonElement>('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -182,6 +192,12 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       showSectorSubsectorNames: this.#posterOptions.showSectorSubsectorNames,
       showLabels: this.#posterOptions.showLabels,
       isExpanded: this.#posterOptionsExpanded
+    };
+  }
+
+  #toSystemNotesViewModel(): SectorSearchSystemNotesViewModel {
+    return {
+      generateSystemNotes: this.#systemNoteOptions.generateSystemNotes
     };
   }
 
@@ -243,7 +259,7 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       const scene = await createSectorScene(selectedSector, {
         ...this.#posterOptions,
         compositing: true
-      });
+      }, this.#systemNoteOptions);
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {

@@ -2,12 +2,18 @@ import {
   DEFAULT_GRID_COLOR,
   DEFAULT_GRID_DISTANCE,
   DEFAULT_GRID_UNITS,
+  DEFAULT_SYSTEM_NOTE_OPTIONS,
   MODULE_ID
 } from "../config/constants.js";
 import { calibrateSectorGrid } from "./hexgridalignment.js";
+import { generateSystemJournalsAndNotes } from "./systemnotes.js";
 import { travellerMapService } from "./travellermap.js";
 import { formatLocalize, localize } from "../utils/localization.js";
-import type { TravellerPosterOptions, TravellerSectorSelection } from "../types/traveller.js";
+import type {
+  TravellerPosterOptions,
+  TravellerSectorSelection,
+  TravellerSystemNoteOptions
+} from "../types/traveller.js";
 
 function createLevelBackgroundData(src: string) {
   return {
@@ -53,7 +59,8 @@ async function configureSceneLevel(
 
 export async function createSectorScene(
   sector: TravellerSectorSelection,
-  posterOptions: Partial<TravellerPosterOptions> = {}
+  posterOptions: Partial<TravellerPosterOptions> = {},
+  systemNoteOptions: TravellerSystemNoteOptions = DEFAULT_SYSTEM_NOTE_OPTIONS
 ): Promise<Scene> {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
@@ -108,6 +115,14 @@ export async function createSectorScene(
 
   const levelData = level.toObject();
 
+  const notesSummary = await generateSystemJournalsAndNotes(
+    scene,
+    sector,
+    grid,
+    poster.posterOptions,
+    systemNoteOptions
+  );
+
   await scene.update({
     [`flags.${MODULE_ID}.backgroundState`]: {
       requested: poster.url,
@@ -115,6 +130,12 @@ export async function createSectorScene(
       levelBackgroundSrc: levelData.background?.src ?? null,
       levelTextures: levelData.textures ?? null,
       sceneBackgroundColor: scene.toObject().backgroundColor ?? null
+    },
+    [`flags.${MODULE_ID}.systemNotes`]: {
+      enabled: systemNoteOptions.generateSystemNotes,
+      detailLevel: systemNoteOptions.detailLevel,
+      createdNotes: notesSummary.createdNotes,
+      touchedJournals: notesSummary.touchedJournals
     }
   } as never);
 

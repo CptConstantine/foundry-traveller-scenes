@@ -21,6 +21,14 @@ var DEFAULT_POSTER_OPTIONS = Object.freeze({
   showSectorSubsectorNames: true,
   showLabels: true
 });
+var DEFAULT_SYSTEM_NOTE_OPTIONS = Object.freeze({
+  generateSystemNotes: true,
+  detailLevel: "basic"
+});
+var SYSTEM_NOTE_ICON = "icons/svg/book.svg";
+var SYSTEM_NOTE_ICON_SIZE = 40;
+var SYSTEM_NOTE_FONT_SIZE = 24;
+var JOURNAL_FOLDER_SORTING = "a";
 var DEFAULT_POSTER_RENDER_OPTIONS = 9207;
 var POSTER_RENDER_OPTION_MASKS = Object.freeze({
   borders: 48,
@@ -81,6 +89,18 @@ function calibrateSectorGrid(image, dimensions = DEFAULT_DIMENSIONS) {
     backgroundOffsetY: 0,
     columns: dimensions.columns,
     rows: dimensions.rows
+  };
+}
+function getHexCenterPoint(gridConfig, column, row) {
+  const grid = new foundry.grid.HexagonalGrid({
+    size: gridConfig.gridSize,
+    columns: true,
+    even: true
+  });
+  const center = grid.getCenterPoint({ i: row - 1, j: column - 1 });
+  return {
+    x: Math.round(center.x + gridConfig.gridOffsetX),
+    y: Math.round(center.y + gridConfig.gridOffsetY)
   };
 }
 
@@ -170,6 +190,47 @@ var TravellerMapService = class {
       ...dimensions
     };
   }
+  async getSectorMetadata(sector, options = {}) {
+    const resolvedOptions = this.resolvePosterOptions(options);
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/metadata`);
+    url.searchParams.set("sector", sector.sectorName);
+    if (resolvedOptions.milieu) {
+      url.searchParams.set("milieu", resolvedOptions.milieu);
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.MetadataStatus", { status: response.status }));
+    }
+    const payload = await response.json();
+    const defaultSectorName = payload.Names?.find((name) => name.Text)?.Text ?? sector.sectorName;
+    const subsectorNames = Object.fromEntries(
+      (payload.DataFile?.Subsectors ?? []).filter((subsector) => Boolean(subsector.Index)).map((subsector) => [subsector.Index, subsector.Name?.trim() || subsector.Index])
+    );
+    return {
+      sectorName: defaultSectorName,
+      abbreviation: payload.Abbreviation,
+      milieu: payload.DataFile?.Milieu ?? resolvedOptions.milieu,
+      subsectorNames
+    };
+  }
+  async getSectorSystems(sector, metadata, options = {}) {
+    const resolvedOptions = this.resolvePosterOptions(options);
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/sec`);
+    url.searchParams.set("sector", sector.sectorName);
+    url.searchParams.set("type", "TabDelimited");
+    url.searchParams.set("metadata", "0");
+    if (sector.kind === "subsector" && sector.subsectorIndex) {
+      url.searchParams.set("subsector", sector.subsectorIndex);
+    }
+    if (resolvedOptions.milieu) {
+      url.searchParams.set("milieu", resolvedOptions.milieu);
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.SystemDataStatus", { status: response.status }));
+    }
+    return this.parseSectorSystems(await response.text(), metadata);
+  }
   createTypedSectorKey(type, name, location) {
     return `${type}::${name}::${location}`;
   }
@@ -215,6 +276,62 @@ var TravellerMapService = class {
   }
   parseTags(tagString) {
     return (tagString ?? "").split(/\s+/).map((tag) => tag.trim()).filter(Boolean);
+  }
+  parseSectorSystems(payload, metadata) {
+    const rows = payload.split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.length > 0 && !line.startsWith("#"));
+    const header = rows.shift();
+    if (!header) {
+      return [];
+    }
+    const headers = header.split("	");
+    return rows.map((row) => this.parseSectorSystemRow(row, headers, metadata)).filter((system) => system !== null).sort((left, right) => left.hex.localeCompare(right.hex));
+  }
+  parseSectorSystemRow(row, headers, metadata) {
+    const columns = row.split("	");
+    const record = Object.fromEntries(headers.map((header, index) => [header, columns[index]?.trim() ?? ""]));
+    const hex = record.Hex;
+    if (!hex || !/^\d{4}$/.test(hex)) {
+      return null;
+    }
+    const hexX = Number.parseInt(hex.slice(0, 2), 10);
+    const hexY = Number.parseInt(hex.slice(2, 4), 10);
+    if (!Number.isFinite(hexX) || !Number.isFinite(hexY)) {
+      return null;
+    }
+    const subsectorIndex = record.SS || this.getSubsectorIndexForHex(hexX, hexY);
+    const subsectorName = metadata.subsectorNames[subsectorIndex] ?? subsectorIndex;
+    const displayName = record.Name?.trim() || formatLocalize("Journals.UnnamedWorld", { hex });
+    return {
+      sector: record.Sector || metadata.abbreviation || metadata.sectorName,
+      subsectorIndex,
+      subsectorName,
+      hex,
+      hexX,
+      hexY,
+      localHexX: (hexX - 1) % SUBSECTOR_HEX_COLUMNS + 1,
+      localHexY: (hexY - 1) % SUBSECTOR_HEX_ROWS + 1,
+      name: record.Name?.trim() || "",
+      displayName,
+      uwp: record.UWP || "",
+      bases: record.Bases || "",
+      remarks: record.Remarks || "",
+      zone: record.Zone || "",
+      pbg: record.PBG || "",
+      allegiance: record.Allegiance || "",
+      stars: record.Stars || "",
+      importance: record["{Ix}"] || "",
+      economics: record["(Ex)"] || "",
+      culture: record["[Cx]"] || "",
+      nobility: record.Nobility || "",
+      worlds: record.W || "",
+      resourceUnits: record.RU || ""
+    };
+  }
+  getSubsectorIndexForHex(hexX, hexY) {
+    const subsectorColumn = Math.floor((hexX - 1) / SUBSECTOR_HEX_COLUMNS);
+    const subsectorRow = Math.floor((hexY - 1) / SUBSECTOR_HEX_ROWS);
+    const subsectorNumber = subsectorRow * 4 + subsectorColumn;
+    return String.fromCharCode(65 + subsectorNumber);
   }
   async fetchPosterBlob(url) {
     const response = await fetch(url);
@@ -331,6 +448,265 @@ var TravellerMapService = class {
 };
 var travellerMapService = new TravellerMapService();
 
+// src/services/systemnotes.ts
+function getModuleFlag(document2, key) {
+  const flags = document2.flags;
+  const scopeFlags = flags?.[MODULE_ID];
+  if (!scopeFlags) {
+    return void 0;
+  }
+  return scopeFlags[key];
+}
+async function generateSystemJournalsAndNotes(scene, sector, grid, posterOptions, noteOptions) {
+  if (!noteOptions.generateSystemNotes) {
+    return {
+      createdNotes: 0,
+      touchedJournals: 0
+    };
+  }
+  const metadata = await travellerMapService.getSectorMetadata(sector, posterOptions);
+  const systems = await travellerMapService.getSectorSystems(sector, metadata, posterOptions);
+  const relevantSystems = sector.kind === "subsector" && sector.subsectorIndex ? systems.filter((system) => system.subsectorIndex === sector.subsectorIndex) : systems;
+  if (relevantSystems.length === 0) {
+    return {
+      createdNotes: 0,
+      touchedJournals: 0
+    };
+  }
+  const rootFolder = await ensureJournalFolder(localize("Journals.RootFolder"), null);
+  const sectorFolder = await ensureJournalFolder(metadata.sectorName, rootFolder);
+  const systemsBySubsector = groupSystemsBySubsector(relevantSystems);
+  const pageLinks = /* @__PURE__ */ new Map();
+  let touchedJournals = 0;
+  for (const [subsectorIndex, subsectorSystems] of systemsBySubsector) {
+    const entry = await ensureSubsectorJournalEntry(
+      sectorFolder,
+      metadata,
+      subsectorIndex,
+      subsectorSystems,
+      posterOptions
+    );
+    touchedJournals += 1;
+    for (const system of subsectorSystems) {
+      const page = findSystemPage(entry, system.hex);
+      if (entry.id && page?.id) {
+        pageLinks.set(system.hex, {
+          entryId: entry.id,
+          pageId: page.id
+        });
+      }
+    }
+  }
+  const existingGeneratedNotes = scene.notes.contents.filter((note) => Boolean(getModuleFlag(note, "generatedSystemNote"))).flatMap((note) => note.id ? [note.id] : []);
+  if (existingGeneratedNotes.length > 0) {
+    await scene.deleteEmbeddedDocuments("Note", existingGeneratedNotes);
+  }
+  const noteData = relevantSystems.map((system) => buildSceneNoteData(system, sector, grid, pageLinks.get(system.hex))).filter((note) => note !== null);
+  if (noteData.length > 0) {
+    await scene.createEmbeddedDocuments("Note", noteData);
+  }
+  return {
+    createdNotes: noteData.length,
+    touchedJournals
+  };
+}
+async function ensureJournalFolder(name, parent) {
+  const existing = game.folders?.contents.find(
+    (folder) => folder.type === "JournalEntry" && folder.name === name && (folder.folder?.id ?? null) === (parent?.id ?? null)
+  );
+  if (existing) {
+    return existing;
+  }
+  const created = await Folder.create({
+    name,
+    type: "JournalEntry",
+    folder: parent?.id ?? null,
+    sorting: JOURNAL_FOLDER_SORTING
+  });
+  if (!created) {
+    throw new Error(localize("Errors.JournalFolderCreateFailed"));
+  }
+  return created;
+}
+function groupSystemsBySubsector(systems) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const system of systems) {
+    const existing = groups.get(system.subsectorIndex);
+    if (existing) {
+      existing.push(system);
+      continue;
+    }
+    groups.set(system.subsectorIndex, [system]);
+  }
+  return groups;
+}
+async function ensureSubsectorJournalEntry(folder, metadata, subsectorIndex, systems, posterOptions) {
+  const subsectorName = systems[0]?.subsectorName ?? subsectorIndex;
+  const milieu = posterOptions.milieu ?? metadata.milieu ?? "M1105";
+  const flagData = {
+    kind: "subsector-journal",
+    sectorName: metadata.sectorName,
+    subsectorIndex,
+    milieu
+  };
+  const existing = game.journal?.contents.find((entry2) => {
+    const flag = getModuleFlag(entry2, "systemNoteJournal");
+    return flag?.kind === flagData.kind && flag.sectorName === flagData.sectorName && flag.subsectorIndex === flagData.subsectorIndex && flag.milieu === flagData.milieu;
+  });
+  const entryName = formatJournalEntryName(subsectorName, metadata.sectorName, milieu);
+  const entry = existing ?? await JournalEntry.create({
+    name: entryName,
+    folder: folder.id,
+    flags: {
+      [MODULE_ID]: {
+        systemNoteJournal: flagData
+      }
+    }
+  });
+  if (!entry) {
+    throw new Error(localize("Errors.JournalEntryCreateFailed"));
+  }
+  if (entry.name !== entryName || (entry.folder?.id ?? null) !== folder.id) {
+    await entry.update({
+      name: entryName,
+      folder: folder.id
+    });
+  }
+  const updates = [];
+  const creations = [];
+  for (const [index, system] of systems.entries()) {
+    const existingPage = findSystemPage(entry, system.hex);
+    const pageData = buildJournalPageData(system, metadata.sectorName, milieu, index);
+    if (existingPage?.id) {
+      updates.push({
+        _id: existingPage.id,
+        ...pageData
+      });
+      continue;
+    }
+    creations.push(pageData);
+  }
+  if (updates.length > 0) {
+    await entry.updateEmbeddedDocuments("JournalEntryPage", updates);
+  }
+  if (creations.length > 0) {
+    await entry.createEmbeddedDocuments("JournalEntryPage", creations);
+  }
+  return entry;
+}
+function findSystemPage(entry, hex) {
+  return entry.pages.contents.find((page) => {
+    const flag = getModuleFlag(page, "systemPage");
+    return flag?.kind === "system-page" && flag.hex === hex;
+  }) ?? null;
+}
+function buildJournalPageData(system, sectorName, milieu, sort) {
+  const flagData = {
+    kind: "system-page",
+    hex: system.hex,
+    sectorName,
+    subsectorIndex: system.subsectorIndex,
+    milieu
+  };
+  return {
+    name: formatLocalize("Journals.PageName", {
+      name: system.displayName,
+      hex: system.hex
+    }),
+    type: "text",
+    sort,
+    title: {
+      show: true,
+      level: 1
+    },
+    text: {
+      content: renderBasicSystemPage(system, sectorName),
+      format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML
+    },
+    flags: {
+      [MODULE_ID]: {
+        systemPage: flagData
+      }
+    }
+  };
+}
+function renderBasicSystemPage(system, sectorName) {
+  const escape = foundry.utils.escapeHTML;
+  const details = [
+    [localize("Journals.Fields.Hex"), system.hex],
+    [localize("Journals.Fields.UWP"), system.uwp],
+    [localize("Journals.Fields.Remarks"), system.remarks],
+    [localize("Journals.Fields.Bases"), system.bases],
+    [localize("Journals.Fields.Zone"), system.zone],
+    [localize("Journals.Fields.PBG"), system.pbg],
+    [localize("Journals.Fields.Allegiance"), system.allegiance],
+    [localize("Journals.Fields.Stars"), system.stars],
+    [localize("Journals.Fields.Importance"), system.importance],
+    [localize("Journals.Fields.Economics"), system.economics],
+    [localize("Journals.Fields.Culture"), system.culture],
+    [localize("Journals.Fields.Nobility"), system.nobility],
+    [localize("Journals.Fields.Worlds"), system.worlds],
+    [localize("Journals.Fields.ResourceUnits"), system.resourceUnits]
+  ].filter(([, value]) => Boolean(value));
+  const detailRows = details.map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join("");
+  return [
+    `<section class="traveller-scenes__journal-page">`,
+    `<p>${escape(formatLocalize("Journals.Description", {
+      name: system.displayName,
+      hex: system.hex,
+      subsector: system.subsectorName,
+      sector: sectorName
+    }))}</p>`,
+    `<dl>${detailRows}</dl>`,
+    `</section>`
+  ].join("");
+}
+function buildSceneNoteData(system, sector, grid, journalLink) {
+  if (!journalLink) {
+    return null;
+  }
+  const notePosition = sector.kind === "subsector" ? getHexCenterPoint(grid, system.localHexX, system.localHexY) : getHexCenterPoint(grid, system.hexX, system.hexY);
+  return {
+    entryId: journalLink.entryId,
+    pageId: journalLink.pageId,
+    x: notePosition.x,
+    y: notePosition.y,
+    iconSize: SYSTEM_NOTE_ICON_SIZE,
+    text: system.displayName,
+    fontSize: SYSTEM_NOTE_FONT_SIZE,
+    textAnchor: CONST.TEXT_ANCHOR_POINTS.BOTTOM,
+    global: true,
+    texture: {
+      src: SYSTEM_NOTE_ICON,
+      anchorX: 0.5,
+      anchorY: 0.5,
+      fit: "contain"
+    },
+    flags: {
+      [MODULE_ID]: {
+        generatedSystemNote: true,
+        hex: system.hex,
+        subsectorIndex: system.subsectorIndex,
+        sectorName: system.sector
+      }
+    }
+  };
+}
+function formatJournalEntryName(subsectorName, sectorName, milieu) {
+  const defaultMilieu = milieu === "M1105";
+  const baseName = formatLocalize("Journals.EntryName", {
+    subsector: subsectorName,
+    sector: sectorName
+  });
+  if (defaultMilieu) {
+    return baseName;
+  }
+  return formatLocalize("Journals.EntryNameWithMilieu", {
+    name: baseName,
+    milieu
+  });
+}
+
 // src/services/scenecreation.ts
 function createLevelBackgroundData(src) {
   return {
@@ -363,7 +739,7 @@ async function configureSceneLevel(scene, sector, posterUrl) {
   }
   return createdLevel;
 }
-async function createSectorScene(sector, posterOptions = {}) {
+async function createSectorScene(sector, posterOptions = {}, systemNoteOptions = DEFAULT_SYSTEM_NOTE_OPTIONS) {
   if (!game.user?.isGM) {
     throw new Error(localize("Errors.OnlyGM"));
   }
@@ -411,6 +787,13 @@ async function createSectorScene(sector, posterOptions = {}) {
     poster.url
   );
   const levelData = level.toObject();
+  const notesSummary = await generateSystemJournalsAndNotes(
+    scene,
+    sector,
+    grid,
+    poster.posterOptions,
+    systemNoteOptions
+  );
   await scene.update({
     [`flags.${MODULE_ID}.backgroundState`]: {
       requested: poster.url,
@@ -418,6 +801,12 @@ async function createSectorScene(sector, posterOptions = {}) {
       levelBackgroundSrc: levelData.background?.src ?? null,
       levelTextures: levelData.textures ?? null,
       sceneBackgroundColor: scene.toObject().backgroundColor ?? null
+    },
+    [`flags.${MODULE_ID}.systemNotes`]: {
+      enabled: systemNoteOptions.generateSystemNotes,
+      detailLevel: systemNoteOptions.detailLevel,
+      createdNotes: notesSummary.createdNotes,
+      touchedJournals: notesSummary.touchedJournals
     }
   });
   await scene.activate();
@@ -457,6 +846,7 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
   #isCreating = false;
   #error = null;
   #posterOptions = { ...DEFAULT_POSTER_OPTIONS };
+  #systemNoteOptions = { ...DEFAULT_SYSTEM_NOTE_OPTIONS };
   #posterOptionsExpanded = false;
   async _prepareContext(options) {
     await super._prepareContext(options);
@@ -468,7 +858,8 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
       error: this.#error,
-      posterOptions: this.#toPosterOptionsViewModel()
+      posterOptions: this.#toPosterOptionsViewModel(),
+      systemNotes: this.#toSystemNotesViewModel()
     };
     return context;
   }
@@ -527,6 +918,10 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
     labelsInput?.addEventListener("change", (event) => {
       this.#posterOptions.showLabels = event.currentTarget.checked;
     });
+    const systemNotesInput = htmlElement.querySelector('input[name="generate-system-notes"]');
+    systemNotesInput?.addEventListener("change", (event) => {
+      this.#systemNoteOptions.generateSystemNotes = event.currentTarget.checked;
+    });
     const createButton = htmlElement.querySelector('[data-action="create-sector-scene"]');
     createButton?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -562,6 +957,11 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       showSectorSubsectorNames: this.#posterOptions.showSectorSubsectorNames,
       showLabels: this.#posterOptions.showLabels,
       isExpanded: this.#posterOptionsExpanded
+    };
+  }
+  #toSystemNotesViewModel() {
+    return {
+      generateSystemNotes: this.#systemNoteOptions.generateSystemNotes
     };
   }
   #toChoiceViewModels(options, selectedValue) {
@@ -611,7 +1011,7 @@ var SectorSearchApplication = class extends SectorSearchApplicationBase {
       const scene = await createSectorScene(selectedSector, {
         ...this.#posterOptions,
         compositing: true
-      });
+      }, this.#systemNoteOptions);
       ui.notifications?.info(formatLocalize("Notifications.CreatedScene", { name: scene.name }));
       await this.close();
     } catch (error) {

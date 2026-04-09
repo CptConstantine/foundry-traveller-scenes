@@ -10,6 +10,10 @@
       "Placeholder": "Spinward Marches",
       "Hint": "Search TravellerMap for a sector or subsector, then create a scene that uses the poster image as the background with a matching Traveller hex grid overlaid in Foundry.",
       "Empty": "No locations loaded yet. Try a search like Spinward Marches or Regina.",
+      "SystemNotes": {
+        "Label": "Generate system journal notes",
+        "Hint": "Create one journal entry per subsector with one page per system, then place linked scene notes on the map using basic world details."
+      },
       "PosterOptions": {
         "Summary": "Poster options",
         "SummaryHint": "Choose the TravellerMap poster style and overlays for the generated scene.",
@@ -61,6 +65,30 @@
     "Scene": {
       "Name": "{name}"
     },
+    "Journals": {
+      "RootFolder": "Traveller Scenes",
+      "EntryName": "{subsector} ({sector})",
+      "EntryNameWithMilieu": "{name} [{milieu}]",
+      "PageName": "{name} ({hex})",
+      "UnnamedWorld": "Unnamed world {hex}",
+      "Description": "{name} at hex {hex} lies in the {subsector} subsector of {sector}.",
+      "Fields": {
+        "Hex": "Hex",
+        "UWP": "UWP",
+        "Remarks": "Remarks",
+        "Bases": "Bases",
+        "Zone": "Travel Zone",
+        "PBG": "PBG",
+        "Allegiance": "Allegiance",
+        "Stars": "Stars",
+        "Importance": "Importance",
+        "Economics": "Economics",
+        "Culture": "Culture",
+        "Nobility": "Nobility",
+        "Worlds": "Worlds",
+        "ResourceUnits": "Resource Units"
+      }
+    },
     "Notifications": {
       "CreatedScene": "Created scene: {name}"
     },
@@ -73,8 +101,12 @@
       "PosterStoreFailed": "Failed to store the TravellerMap poster in Foundry's module storage.",
       "PosterDirectoryCreateFailed": "Failed to create poster asset directory: {message}",
       "PosterLoadFailed": "Failed to load the TravellerMap poster image.",
+      "MetadataStatus": "TravellerMap metadata request failed with status {status}.",
+      "SystemDataStatus": "TravellerMap SEC request failed with status {status}.",
       "SceneLevelMissing": "Foundry did not create an initial Scene Level.",
-      "SceneCreateMissing": "Foundry did not return a Scene document."
+      "SceneCreateMissing": "Foundry did not return a Scene document.",
+      "JournalFolderCreateFailed": "Foundry did not return a Journal folder document.",
+      "JournalEntryCreateFailed": "Foundry did not return a Journal Entry document."
     }
   }
 }

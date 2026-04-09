@@ -2,7 +2,7 @@
   "id": "traveller-scenes",
   "title": "Traveller Scenes",
   "description": "Generate Foundry VTT sector and subsector scenes from TravellerMap API.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "authors": [
     {
       "name": "CptConstantine"

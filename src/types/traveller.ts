@@ -38,6 +38,13 @@ export interface TravellerSectorSelection {
   dimensions: SectorDimensions;
 }
 
+export interface TravellerSystemNoteOptions {
+  generateSystemNotes: boolean;
+  detailLevel: TravellerSystemNoteDetailLevel;
+}
+
+export type TravellerSystemNoteDetailLevel = "basic";
+
 export interface TravellerPosterOptions {
   style: string;
   scale: number;
@@ -64,6 +71,61 @@ export interface PosterImageInfo {
   width: number;
   height: number;
   posterOptions: TravellerPosterOptions;
+}
+
+export interface TravellerMapMetadataResponse {
+  Abbreviation?: string;
+  Names?: TravellerMapMetadataName[];
+  DataFile?: TravellerMapMetadataDataFile;
+}
+
+export interface TravellerMapMetadataName {
+  Text?: string;
+  Lang?: string;
+}
+
+export interface TravellerMapMetadataDataFile {
+  Milieu?: string;
+  Subsectors?: TravellerMapMetadataSubsector[];
+}
+
+export interface TravellerMapMetadataSubsector {
+  Name?: string;
+  Index?: string;
+  IndexNumber?: number;
+}
+
+export interface TravellerSectorMetadata {
+  sectorName: string;
+  abbreviation?: string;
+  milieu?: string;
+  subsectorNames: Record<string, string>;
+}
+
+export interface TravellerSectorSystem {
+  sector: string;
+  subsectorIndex: string;
+  subsectorName: string;
+  hex: string;
+  hexX: number;
+  hexY: number;
+  localHexX: number;
+  localHexY: number;
+  name: string;
+  displayName: string;
+  uwp: string;
+  bases: string;
+  remarks: string;
+  zone: string;
+  pbg: string;
+  allegiance: string;
+  stars: string;
+  importance: string;
+  economics: string;
+  culture: string;
+  nobility: string;
+  worlds: string;
+  resourceUnits: string;
 }
 
 export interface SectorDimensions {
@@ -103,6 +165,10 @@ export interface SectorSearchPosterOptionsViewModel {
   isExpanded: boolean;
 }
 
+export interface SectorSearchSystemNotesViewModel {
+  generateSystemNotes: boolean;
+}
+
 export interface SectorSearchApplicationContext {
   query: string;
   results: SectorSearchResultViewModel[];
@@ -112,4 +178,5 @@ export interface SectorSearchApplicationContext {
   isCreating: boolean;
   error: string | null;
   posterOptions: SectorSearchPosterOptionsViewModel;
+  systemNotes: SectorSearchSystemNotesViewModel;
 }

@@ -1,4 +1,8 @@
-import type { PosterOptionChoice, TravellerPosterOptions } from "../types/traveller.js";
+import type {
+  PosterOptionChoice,
+  TravellerPosterOptions,
+  TravellerSystemNoteOptions
+} from "../types/traveller.js";
 
 export const MODULE_ID = "traveller-scenes";
 export const MODULE_TITLE = "Traveller Scenes";
@@ -27,6 +31,16 @@ export const DEFAULT_POSTER_OPTIONS: Readonly<TravellerPosterOptions> = Object.f
   showSectorSubsectorNames: true,
   showLabels: true
 });
+
+export const DEFAULT_SYSTEM_NOTE_OPTIONS: Readonly<TravellerSystemNoteOptions> = Object.freeze({
+  generateSystemNotes: true,
+  detailLevel: "basic"
+});
+
+export const SYSTEM_NOTE_ICON = "icons/svg/book.svg";
+export const SYSTEM_NOTE_ICON_SIZE = 40;
+export const SYSTEM_NOTE_FONT_SIZE = 24;
+export const JOURNAL_FOLDER_SORTING = "a";
 
 export const DEFAULT_POSTER_RENDER_OPTIONS = 9207;
 export const POSTER_RENDER_OPTION_MASKS = Object.freeze({

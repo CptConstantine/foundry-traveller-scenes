@@ -33,3 +33,21 @@ export function calibrateSectorGrid(
     rows: dimensions.rows
   };
 }
+
+export function getHexCenterPoint(
+  gridConfig: CalibratedGridConfig,
+  column: number,
+  row: number
+): { x: number; y: number } {
+  const grid = new foundry.grid.HexagonalGrid({
+    size: gridConfig.gridSize,
+    columns: true,
+    even: true
+  });
+  const center = grid.getCenterPoint({ i: row - 1, j: column - 1 });
+
+  return {
+    x: Math.round(center.x + gridConfig.gridOffsetX),
+    y: Math.round(center.y + gridConfig.gridOffsetY)
+  };
+}

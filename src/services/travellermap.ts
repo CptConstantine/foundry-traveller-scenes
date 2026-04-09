@@ -13,12 +13,15 @@ import {
 import { formatLocalize, localize } from "../utils/localization.js";
 import type {
   PosterImageInfo,
+  TravellerMapMetadataResponse,
   TravellerMapSearchResponse,
   TravellerMapSectorResult,
   TravellerMapSearchItem,
   TravellerMapSubsectorResult,
   TravellerPosterOptions,
-  TravellerSectorSelection
+  TravellerSectorMetadata,
+  TravellerSectorSelection,
+  TravellerSectorSystem
 } from "../types/traveller.js";
 
 export class TravellerMapService {
@@ -115,6 +118,68 @@ export class TravellerMapService {
     };
   }
 
+  async getSectorMetadata(
+    sector: TravellerSectorSelection,
+    options: Partial<TravellerPosterOptions> = {}
+  ): Promise<TravellerSectorMetadata> {
+    const resolvedOptions = this.resolvePosterOptions(options);
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/metadata`);
+
+    url.searchParams.set("sector", sector.sectorName);
+
+    if (resolvedOptions.milieu) {
+      url.searchParams.set("milieu", resolvedOptions.milieu);
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.MetadataStatus", { status: response.status }));
+    }
+
+    const payload = (await response.json()) as TravellerMapMetadataResponse;
+    const defaultSectorName = payload.Names?.find((name) => name.Text)?.Text ?? sector.sectorName;
+    const subsectorNames = Object.fromEntries(
+      (payload.DataFile?.Subsectors ?? [])
+        .filter((subsector): subsector is { Index: string; Name?: string } => Boolean(subsector.Index))
+        .map((subsector) => [subsector.Index, subsector.Name?.trim() || subsector.Index])
+    );
+
+    return {
+      sectorName: defaultSectorName,
+      abbreviation: payload.Abbreviation,
+      milieu: payload.DataFile?.Milieu ?? resolvedOptions.milieu,
+      subsectorNames
+    };
+  }
+
+  async getSectorSystems(
+    sector: TravellerSectorSelection,
+    metadata: TravellerSectorMetadata,
+    options: Partial<TravellerPosterOptions> = {}
+  ): Promise<TravellerSectorSystem[]> {
+    const resolvedOptions = this.resolvePosterOptions(options);
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/sec`);
+
+    url.searchParams.set("sector", sector.sectorName);
+    url.searchParams.set("type", "TabDelimited");
+    url.searchParams.set("metadata", "0");
+
+    if (sector.kind === "subsector" && sector.subsectorIndex) {
+      url.searchParams.set("subsector", sector.subsectorIndex);
+    }
+
+    if (resolvedOptions.milieu) {
+      url.searchParams.set("milieu", resolvedOptions.milieu);
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.SystemDataStatus", { status: response.status }));
+    }
+
+    return this.parseSectorSystems(await response.text(), metadata);
+  }
+
   private createTypedSectorKey(type: "sector" | "subsector", name: string, location: string): string {
     return `${type}::${name}::${location}`;
   }
@@ -169,6 +234,87 @@ export class TravellerMapService {
       .split(/\s+/)
       .map((tag) => tag.trim())
       .filter(Boolean);
+  }
+
+  private parseSectorSystems(
+    payload: string,
+    metadata: TravellerSectorMetadata
+  ): TravellerSectorSystem[] {
+    const rows = payload
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+
+    const header = rows.shift();
+    if (!header) {
+      return [];
+    }
+
+    const headers = header.split("\t");
+
+    return rows
+      .map((row) => this.parseSectorSystemRow(row, headers, metadata))
+      .filter((system): system is TravellerSectorSystem => system !== null)
+      .sort((left, right) => left.hex.localeCompare(right.hex));
+  }
+
+  private parseSectorSystemRow(
+    row: string,
+    headers: string[],
+    metadata: TravellerSectorMetadata
+  ): TravellerSectorSystem | null {
+    const columns = row.split("\t");
+    const record = Object.fromEntries(headers.map((header, index) => [header, columns[index]?.trim() ?? ""]));
+    const hex = record.Hex;
+
+    if (!hex || !/^\d{4}$/.test(hex)) {
+      return null;
+    }
+
+    const hexX = Number.parseInt(hex.slice(0, 2), 10);
+    const hexY = Number.parseInt(hex.slice(2, 4), 10);
+
+    if (!Number.isFinite(hexX) || !Number.isFinite(hexY)) {
+      return null;
+    }
+
+    const subsectorIndex = record.SS || this.getSubsectorIndexForHex(hexX, hexY);
+    const subsectorName = metadata.subsectorNames[subsectorIndex] ?? subsectorIndex;
+    const displayName = record.Name?.trim() || formatLocalize("Journals.UnnamedWorld", { hex });
+
+    return {
+      sector: record.Sector || metadata.abbreviation || metadata.sectorName,
+      subsectorIndex,
+      subsectorName,
+      hex,
+      hexX,
+      hexY,
+      localHexX: ((hexX - 1) % SUBSECTOR_HEX_COLUMNS) + 1,
+      localHexY: ((hexY - 1) % SUBSECTOR_HEX_ROWS) + 1,
+      name: record.Name?.trim() || "",
+      displayName,
+      uwp: record.UWP || "",
+      bases: record.Bases || "",
+      remarks: record.Remarks || "",
+      zone: record.Zone || "",
+      pbg: record.PBG || "",
+      allegiance: record.Allegiance || "",
+      stars: record.Stars || "",
+      importance: record["{Ix}"] || "",
+      economics: record["(Ex)"] || "",
+      culture: record["[Cx]"] || "",
+      nobility: record.Nobility || "",
+      worlds: record.W || "",
+      resourceUnits: record.RU || ""
+    };
+  }
+
+  private getSubsectorIndexForHex(hexX: number, hexY: number): string {
+    const subsectorColumn = Math.floor((hexX - 1) / SUBSECTOR_HEX_COLUMNS);
+    const subsectorRow = Math.floor((hexY - 1) / SUBSECTOR_HEX_ROWS);
+    const subsectorNumber = subsectorRow * 4 + subsectorColumn;
+
+    return String.fromCharCode(65 + subsectorNumber);
   }
 
   private async fetchPosterBlob(url: string): Promise<Blob> {
