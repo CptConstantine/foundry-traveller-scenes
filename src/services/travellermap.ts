@@ -138,8 +138,9 @@ export class TravellerMapService {
 
     const payload = (await response.json()) as TravellerMapMetadataResponse;
     const defaultSectorName = payload.Names?.find((name) => name.Text)?.Text ?? sector.sectorName;
+    const subsectorDefinitions = payload.Subsectors ?? payload.DataFile?.Subsectors ?? [];
     const subsectorNames = Object.fromEntries(
-      (payload.DataFile?.Subsectors ?? [])
+      subsectorDefinitions
         .filter((subsector): subsector is { Index: string; Name?: string } => Boolean(subsector.Index))
         .map((subsector) => [subsector.Index, subsector.Name?.trim() || subsector.Index])
     );

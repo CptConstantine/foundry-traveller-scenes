@@ -23,7 +23,7 @@ export const SECTOR_SEARCH_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/secto
 
 export const DEFAULT_POSTER_OPTIONS: Readonly<TravellerPosterOptions> = Object.freeze({
   style: "poster",
-  scale: 64,
+  scale: 128,
   compositing: true,
   noGrid: true,
   routes: false,

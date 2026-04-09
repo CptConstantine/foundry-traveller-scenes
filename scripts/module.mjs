@@ -13,7 +13,7 @@ var POSTER_STORAGE_PATH = `assets/${MODULE_ID}/posters`;
 var SECTOR_SEARCH_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/sector-search-app.hbs`;
 var DEFAULT_POSTER_OPTIONS = Object.freeze({
   style: "poster",
-  scale: 64,
+  scale: 128,
   compositing: true,
   noGrid: true,
   routes: false,
@@ -203,8 +203,9 @@ var TravellerMapService = class {
     }
     const payload = await response.json();
     const defaultSectorName = payload.Names?.find((name) => name.Text)?.Text ?? sector.sectorName;
+    const subsectorDefinitions = payload.Subsectors ?? payload.DataFile?.Subsectors ?? [];
     const subsectorNames = Object.fromEntries(
-      (payload.DataFile?.Subsectors ?? []).filter((subsector) => Boolean(subsector.Index)).map((subsector) => [subsector.Index, subsector.Name?.trim() || subsector.Index])
+      subsectorDefinitions.filter((subsector) => Boolean(subsector.Index)).map((subsector) => [subsector.Index, subsector.Name?.trim() || subsector.Index])
     );
     return {
       sectorName: defaultSectorName,
@@ -449,6 +450,32 @@ var TravellerMapService = class {
 var travellerMapService = new TravellerMapService();
 
 // src/services/systemnotes.ts
+var TRADE_CODE_TOKENS = /* @__PURE__ */ new Set([
+  "Ag",
+  "As",
+  "Ba",
+  "De",
+  "Fl",
+  "Ga",
+  "He",
+  "Hi",
+  "Ht",
+  "Ic",
+  "In",
+  "Lo",
+  "Lt",
+  "Na",
+  "Ni",
+  "Oc",
+  "Pa",
+  "Ph",
+  "Pi",
+  "Po",
+  "Pr",
+  "Ri",
+  "Va",
+  "Wa"
+]);
 function getModuleFlag(document2, key) {
   const flags = document2.flags;
   const scopeFlags = flags?.[MODULE_ID];
@@ -632,7 +659,11 @@ function buildJournalPageData(system, sectorName, milieu, sort) {
 }
 function renderBasicSystemPage(system, sectorName) {
   const escape = foundry.utils.escapeHTML;
-  const details = [
+  const overviewParagraphs = buildOverviewParagraphs(system, sectorName).map((paragraph) => `<p>${escape(paragraph)}</p>`).join("");
+  const profileRows = buildProfileRows(system).map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join("");
+  const tradeCodeItems = buildTradeCodeItems(system).map((item) => `<li>${escape(item)}</li>`).join("");
+  const classificationItems = buildClassificationItems(system).map((item) => `<li>${escape(item)}</li>`).join("");
+  const rawDetails = [
     [localize("Journals.Fields.Hex"), system.hex],
     [localize("Journals.Fields.UWP"), system.uwp],
     [localize("Journals.Fields.Remarks"), system.remarks],
@@ -648,18 +679,356 @@ function renderBasicSystemPage(system, sectorName) {
     [localize("Journals.Fields.Worlds"), system.worlds],
     [localize("Journals.Fields.ResourceUnits"), system.resourceUnits]
   ].filter(([, value]) => Boolean(value));
-  const detailRows = details.map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join("");
+  const rawDetailRows = rawDetails.map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join("");
   return [
     `<section class="traveller-scenes__journal-page">`,
-    `<p>${escape(formatLocalize("Journals.Description", {
+    `<h2>${escape(localize("Journals.Sections.Overview"))}</h2>`,
+    overviewParagraphs,
+    `<h2>${escape(localize("Journals.Sections.Profile"))}</h2>`,
+    `<dl>${profileRows}</dl>`,
+    `<h2>${escape(localize("Journals.Sections.TradeCodes"))}</h2>`,
+    tradeCodeItems ? `<ul>${tradeCodeItems}</ul>` : `<p>${escape(localize("Journals.EmptyTradeCodes"))}</p>`,
+    `<h2>${escape(localize("Journals.Sections.Classifications"))}</h2>`,
+    classificationItems ? `<ul>${classificationItems}</ul>` : `<p>${escape(localize("Journals.EmptyClassifications"))}</p>`,
+    `<h2>${escape(localize("Journals.Sections.RawData"))}</h2>`,
+    `<dl>${rawDetailRows}</dl>`,
+    `</section>`
+  ].join("");
+}
+function buildOverviewParagraphs(system, sectorName) {
+  const uwp = parseUwp(system.uwp);
+  const remarks = describeRemarkTokens(system.remarks);
+  const remarkSummary = remarks.slice(0, 3).join(", ");
+  const paragraphs = [
+    formatLocalize("Journals.Description", {
       name: system.displayName,
       hex: system.hex,
       subsector: system.subsectorName,
       sector: sectorName
-    }))}</p>`,
-    `<dl>${detailRows}</dl>`,
-    `</section>`
-  ].join("");
+    })
+  ];
+  if (uwp) {
+    paragraphs.push(formatLocalize("Journals.Overview.WorldSummary", {
+      starport: describeStarport(uwp.starport),
+      size: describeSize(uwp.size),
+      atmosphere: describeAtmosphere(uwp.atmosphere),
+      hydrographics: describeHydrographics(uwp.hydrographics),
+      population: describePopulation(uwp.population),
+      government: describeGovernment(uwp.government),
+      law: describeLawLevel(uwp.lawLevel),
+      techLevel: describeTechLevel(uwp.techLevel)
+    }));
+  }
+  if (remarkSummary) {
+    paragraphs.push(formatLocalize("Journals.Overview.ClassificationSummary", {
+      classifications: remarkSummary
+    }));
+  }
+  if (system.zone) {
+    paragraphs.push(formatLocalize("Journals.Overview.TravelZoneSummary", {
+      zone: describeTravelZone(system.zone)
+    }));
+  }
+  return paragraphs;
+}
+function buildProfileRows(system) {
+  const uwp = parseUwp(system.uwp);
+  const rows = [];
+  if (uwp) {
+    rows.push([localize("Journals.Profile.Starport"), describeStarport(uwp.starport)]);
+    rows.push([localize("Journals.Profile.Size"), describeSize(uwp.size)]);
+    rows.push([localize("Journals.Profile.Atmosphere"), describeAtmosphere(uwp.atmosphere)]);
+    rows.push([localize("Journals.Profile.Hydrographics"), describeHydrographics(uwp.hydrographics)]);
+    rows.push([localize("Journals.Profile.Population"), describePopulation(uwp.population)]);
+    rows.push([localize("Journals.Profile.Government"), describeGovernment(uwp.government)]);
+    rows.push([localize("Journals.Profile.LawLevel"), describeLawLevel(uwp.lawLevel)]);
+    rows.push([localize("Journals.Profile.TechLevel"), describeTechLevel(uwp.techLevel)]);
+  }
+  const pbgSummary = describePbg(system.pbg);
+  if (pbgSummary) {
+    rows.push([localize("Journals.Profile.PBGExpanded"), pbgSummary]);
+  }
+  if (system.stars) {
+    rows.push([localize("Journals.Profile.Stellar"), system.stars]);
+  }
+  if (system.allegiance) {
+    rows.push([localize("Journals.Profile.AllegianceExpanded"), system.allegiance]);
+  }
+  return rows;
+}
+function buildClassificationItems(system) {
+  const items = getRemarkTokens(system.remarks).filter((token) => !isTradeCodeToken(token)).map((token) => describeRemarkToken(token));
+  if (system.bases) {
+    items.push(formatLocalize("Journals.Classifications.BasesPresent", {
+      bases: system.bases
+    }));
+  }
+  if (system.zone) {
+    items.push(formatLocalize("Journals.Classifications.TravelZone", {
+      zone: describeTravelZone(system.zone)
+    }));
+  }
+  if (system.importance) {
+    items.push(formatLocalize("Journals.Classifications.ImportanceRating", {
+      importance: system.importance
+    }));
+  }
+  if (system.economics) {
+    items.push(formatLocalize("Journals.Classifications.EconomicsRating", {
+      economics: system.economics
+    }));
+  }
+  if (system.culture) {
+    items.push(formatLocalize("Journals.Classifications.CultureRating", {
+      culture: system.culture
+    }));
+  }
+  return items;
+}
+function buildTradeCodeItems(system) {
+  return getRemarkTokens(system.remarks).filter((token) => isTradeCodeToken(token)).map((token) => formatTradeCode(token));
+}
+function formatTradeCode(token) {
+  return `${token} (${describeRemarkToken(token)})`;
+}
+function parseUwp(uwp) {
+  const match = uwp.match(/^(.)(.)(.)(.)(.)(.)(.)-(.)$/);
+  if (!match) {
+    return null;
+  }
+  const [, starport, size, atmosphere, hydrographics, population, government, lawLevel, techLevel] = match;
+  return {
+    starport,
+    size,
+    atmosphere,
+    hydrographics,
+    population,
+    government,
+    lawLevel,
+    techLevel
+  };
+}
+function decodeEHex(value) {
+  const normalized = value.trim().toUpperCase();
+  if (!normalized) {
+    return null;
+  }
+  const alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const index = alphabet.indexOf(normalized);
+  return index >= 0 ? index : null;
+}
+function describeStarport(code) {
+  const descriptions = {
+    A: localize("Journals.Starport.A"),
+    B: localize("Journals.Starport.B"),
+    C: localize("Journals.Starport.C"),
+    D: localize("Journals.Starport.D"),
+    E: localize("Journals.Starport.E"),
+    X: localize("Journals.Starport.X")
+  };
+  return descriptions[code.toUpperCase()] ?? formatLocalize("Journals.GenericCode", { code });
+}
+function describeSize(code) {
+  const value = decodeEHex(code);
+  if (value === null) {
+    return formatLocalize("Journals.GenericCode", { code });
+  }
+  if (value === 0) {
+    return localize("Journals.Size.0");
+  }
+  const diameter = value * 1600;
+  return formatLocalize("Journals.Size.Other", { code, diameter });
+}
+function describeAtmosphere(code) {
+  const descriptions = {
+    "0": localize("Journals.Atmosphere.0"),
+    "1": localize("Journals.Atmosphere.1"),
+    "2": localize("Journals.Atmosphere.2"),
+    "3": localize("Journals.Atmosphere.3"),
+    "4": localize("Journals.Atmosphere.4"),
+    "5": localize("Journals.Atmosphere.5"),
+    "6": localize("Journals.Atmosphere.6"),
+    "7": localize("Journals.Atmosphere.7"),
+    "8": localize("Journals.Atmosphere.8"),
+    "9": localize("Journals.Atmosphere.9"),
+    A: localize("Journals.Atmosphere.A"),
+    B: localize("Journals.Atmosphere.B"),
+    C: localize("Journals.Atmosphere.C"),
+    D: localize("Journals.Atmosphere.D"),
+    E: localize("Journals.Atmosphere.E"),
+    F: localize("Journals.Atmosphere.F")
+  };
+  return descriptions[code.toUpperCase()] ?? formatLocalize("Journals.GenericCode", { code });
+}
+function describeHydrographics(code) {
+  const value = decodeEHex(code);
+  if (value === null) {
+    return formatLocalize("Journals.GenericCode", { code });
+  }
+  const percentage = Math.min(value, 10) * 10;
+  return formatLocalize("Journals.Hydrographics.Description", { code, percentage });
+}
+function describePopulation(code) {
+  const value = decodeEHex(code);
+  if (value === null) {
+    return formatLocalize("Journals.GenericCode", { code });
+  }
+  if (value === 0) {
+    return localize("Journals.Population.0");
+  }
+  if (value <= 3) {
+    return formatLocalize("Journals.Population.Low", { code });
+  }
+  if (value <= 6) {
+    return formatLocalize("Journals.Population.Moderate", { code });
+  }
+  if (value <= 8) {
+    return formatLocalize("Journals.Population.High", { code });
+  }
+  return formatLocalize("Journals.Population.VeryHigh", { code });
+}
+function describeGovernment(code) {
+  const descriptions = {
+    "0": localize("Journals.Government.0"),
+    "1": localize("Journals.Government.1"),
+    "2": localize("Journals.Government.2"),
+    "3": localize("Journals.Government.3"),
+    "4": localize("Journals.Government.4"),
+    "5": localize("Journals.Government.5"),
+    "6": localize("Journals.Government.6"),
+    "7": localize("Journals.Government.7"),
+    "8": localize("Journals.Government.8"),
+    "9": localize("Journals.Government.9"),
+    A: localize("Journals.Government.A"),
+    B: localize("Journals.Government.B"),
+    C: localize("Journals.Government.C"),
+    D: localize("Journals.Government.D"),
+    E: localize("Journals.Government.E"),
+    F: localize("Journals.Government.F")
+  };
+  return descriptions[code.toUpperCase()] ?? formatLocalize("Journals.GenericCode", { code });
+}
+function describeLawLevel(code) {
+  const value = decodeEHex(code);
+  if (value === null) {
+    return formatLocalize("Journals.GenericCode", { code });
+  }
+  if (value === 0) {
+    return localize("Journals.LawLevel.0");
+  }
+  if (value <= 3) {
+    return formatLocalize("Journals.LawLevel.Light", { code });
+  }
+  if (value <= 7) {
+    return formatLocalize("Journals.LawLevel.Moderate", { code });
+  }
+  if (value <= 10) {
+    return formatLocalize("Journals.LawLevel.Strict", { code });
+  }
+  return formatLocalize("Journals.LawLevel.Extreme", { code });
+}
+function describeTechLevel(code) {
+  const value = decodeEHex(code);
+  if (value === null) {
+    return formatLocalize("Journals.GenericCode", { code });
+  }
+  if (value <= 5) {
+    return formatLocalize("Journals.TechLevel.Low", { code });
+  }
+  if (value <= 8) {
+    return formatLocalize("Journals.TechLevel.Moderate", { code });
+  }
+  if (value <= 11) {
+    return formatLocalize("Journals.TechLevel.Advanced", { code });
+  }
+  return formatLocalize("Journals.TechLevel.VeryAdvanced", { code });
+}
+function describePbg(pbg) {
+  const match = pbg.match(/^(\w)(\w)(\w)$/i);
+  if (!match) {
+    return pbg || null;
+  }
+  const [, populationMultiplierCode, planetoidBeltsCode, gasGiantsCode] = match;
+  const populationMultiplier = decodeEHex(populationMultiplierCode);
+  const planetoidBelts = decodeEHex(planetoidBeltsCode);
+  const gasGiants = decodeEHex(gasGiantsCode);
+  return formatLocalize("Journals.Profile.PBGDescription", {
+    populationMultiplier: populationMultiplier ?? populationMultiplierCode,
+    planetoidBelts: planetoidBelts ?? planetoidBeltsCode,
+    gasGiants: gasGiants ?? gasGiantsCode
+  });
+}
+function describeTravelZone(zone) {
+  const normalized = zone.trim().toUpperCase();
+  if (!normalized) {
+    return localize("Journals.TravelZone.None");
+  }
+  if (normalized === "A") {
+    return localize("Journals.TravelZone.Amber");
+  }
+  if (normalized === "R") {
+    return localize("Journals.TravelZone.Red");
+  }
+  return formatLocalize("Journals.GenericCode", { code: zone });
+}
+function describeRemarkTokens(remarks) {
+  return getRemarkTokens(remarks).map((token) => describeRemarkToken(token));
+}
+function getRemarkTokens(remarks) {
+  return remarks.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+}
+function isTradeCodeToken(token) {
+  return TRADE_CODE_TOKENS.has(token);
+}
+function describeRemarkToken(token) {
+  const descriptions = {
+    Ag: localize("Journals.Remarks.Ag"),
+    An: localize("Journals.Remarks.An"),
+    As: localize("Journals.Remarks.As"),
+    Ba: localize("Journals.Remarks.Ba"),
+    Cp: localize("Journals.Remarks.Cp"),
+    Cs: localize("Journals.Remarks.Cs"),
+    Da: localize("Journals.Remarks.Da"),
+    De: localize("Journals.Remarks.De"),
+    Di: localize("Journals.Remarks.Di"),
+    Fl: localize("Journals.Remarks.Fl"),
+    Fo: localize("Journals.Remarks.Fo"),
+    Ga: localize("Journals.Remarks.Ga"),
+    He: localize("Journals.Remarks.He"),
+    Hi: localize("Journals.Remarks.Hi"),
+    Ht: localize("Journals.Remarks.Ht"),
+    Ic: localize("Journals.Remarks.Ic"),
+    In: localize("Journals.Remarks.In"),
+    Lo: localize("Journals.Remarks.Lo"),
+    Lt: localize("Journals.Remarks.Lt"),
+    Mr: localize("Journals.Remarks.Mr"),
+    Na: localize("Journals.Remarks.Na"),
+    Ni: localize("Journals.Remarks.Ni"),
+    Oc: localize("Journals.Remarks.Oc"),
+    Pa: localize("Journals.Remarks.Pa"),
+    Ph: localize("Journals.Remarks.Ph"),
+    Pi: localize("Journals.Remarks.Pi"),
+    Po: localize("Journals.Remarks.Po"),
+    Pr: localize("Journals.Remarks.Pr"),
+    Pz: localize("Journals.Remarks.Pz"),
+    Re: localize("Journals.Remarks.Re"),
+    Ri: localize("Journals.Remarks.Ri"),
+    RsA: localize("Journals.Remarks.RsA"),
+    RsB: localize("Journals.Remarks.RsB"),
+    RsD: localize("Journals.Remarks.RsD"),
+    RsE: localize("Journals.Remarks.RsE"),
+    RsG: localize("Journals.Remarks.RsG"),
+    RsT: localize("Journals.Remarks.RsT"),
+    Sa: localize("Journals.Remarks.Sa"),
+    Va: localize("Journals.Remarks.Va"),
+    Wa: localize("Journals.Remarks.Wa")
+  };
+  if (token.startsWith("O:")) {
+    return formatLocalize("Journals.Remarks.Ownership", {
+      target: token.slice(2)
+    });
+  }
+  return descriptions[token] ?? token;
 }
 function buildSceneNoteData(system, sector, grid, journalLink) {
   if (!journalLink) {
@@ -692,17 +1061,14 @@ function buildSceneNoteData(system, sector, grid, journalLink) {
     }
   };
 }
-function formatJournalEntryName(subsectorName, sectorName, milieu) {
+function formatJournalEntryName(subsectorName, _sectorName, milieu) {
   const defaultMilieu = milieu === "M1105";
-  const baseName = formatLocalize("Journals.EntryName", {
-    subsector: subsectorName,
-    sector: sectorName
-  });
+  const baseName = formatLocalize("Journals.EntryName", { subsector: subsectorName });
   if (defaultMilieu) {
     return baseName;
   }
   return formatLocalize("Journals.EntryNameWithMilieu", {
-    name: baseName,
+    subsector: subsectorName,
     milieu
   });
 }

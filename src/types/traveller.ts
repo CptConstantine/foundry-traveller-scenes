@@ -76,6 +76,7 @@ export interface PosterImageInfo {
 export interface TravellerMapMetadataResponse {
   Abbreviation?: string;
   Names?: TravellerMapMetadataName[];
+  Subsectors?: TravellerMapMetadataSubsector[];
   DataFile?: TravellerMapMetadataDataFile;
 }
 
