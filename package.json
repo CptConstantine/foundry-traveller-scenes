@@ -1,6 +1,6 @@
 {
   "name": "traveller-scenes",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Foundry VTT module for generating scenes from TravellerMap.",
   "private": true,
   "repository": {
