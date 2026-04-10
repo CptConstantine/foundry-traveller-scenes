@@ -26,16 +26,33 @@ export interface TravellerMapSubsectorResult {
   SectorTags?: string;
 }
 
+export type TravellerContentSource = "travellermap" | "generated";
+
+export interface GeneratedTravellerPosterPayload {
+  data: string;
+  metadata: string;
+}
+
+export interface GeneratedTravellerContent {
+  seed: string;
+  generatedAt: string;
+  metadata: TravellerSectorMetadata;
+  systems: TravellerSectorSystem[];
+  poster: GeneratedTravellerPosterPayload;
+}
+
 export interface TravellerSectorSelection {
   key: string;
   name: string;
   sectorX: number;
   sectorY: number;
   tags: string[];
+  source: TravellerContentSource;
   kind: "sector" | "subsector";
   sectorName: string;
   subsectorIndex?: string;
   dimensions: SectorDimensions;
+  generatedContent?: GeneratedTravellerContent;
 }
 
 export interface TravellerSystemNoteOptions {
@@ -44,6 +61,12 @@ export interface TravellerSystemNoteOptions {
 }
 
 export type TravellerSystemNoteDetailLevel = "basic";
+
+export interface TravellerGeneratedSystemOptions {
+  seed?: string;
+  name?: string;
+  milieu?: string;
+}
 
 export interface TravellerPosterOptions {
   style: string;
@@ -177,7 +200,19 @@ export interface SectorSearchApplicationContext {
   canCreate: boolean;
   isLoading: boolean;
   isCreating: boolean;
+  isCreatingSelection: boolean;
   error: string | null;
   posterOptions: SectorSearchPosterOptionsViewModel;
+  systemNotes: SectorSearchSystemNotesViewModel;
+}
+
+export interface GeneratedSystemApplicationContext {
+  seed: string;
+  systemName: string;
+  currentSceneName: string | null;
+  hasCurrentScene: boolean;
+  isGenerating: boolean;
+  error: string | null;
+  milieuOptions: PosterOptionChoiceViewModel[];
   systemNotes: SectorSearchSystemNotesViewModel;
 }

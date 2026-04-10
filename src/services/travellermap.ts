@@ -10,8 +10,10 @@ import {
   SUBSECTOR_HEX_ROWS,
   TRAVELLER_MAP_API_BASE
 } from "../config/constants.js";
+import { buildGeneratedSystemJumpMapData } from "./generatedtraveller.js";
 import { formatLocalize, localize } from "../utils/localization.js";
 import type {
+  GeneratedTravellerContent,
   PosterImageInfo,
   TravellerMapMetadataResponse,
   TravellerMapSearchResponse,
@@ -74,29 +76,7 @@ export class TravellerMapService {
       url.searchParams.set("subsector", sector.subsectorIndex);
     }
 
-    url.searchParams.set("style", resolvedOptions.style);
-    url.searchParams.set("scale", String(resolvedOptions.scale));
-
-    if (resolvedOptions.compositing) {
-      url.searchParams.set("compositing", "1");
-    }
-
-    const renderOptions = this.buildPosterRenderOptions(resolvedOptions);
-    if (renderOptions !== undefined) {
-      url.searchParams.set("options", String(renderOptions));
-    }
-
-    if (resolvedOptions.noGrid) {
-      url.searchParams.set("nogrid", "1");
-    }
-
-    if (!resolvedOptions.routes) {
-      url.searchParams.set("routes", "0");
-    }
-
-    if (resolvedOptions.milieu) {
-      url.searchParams.set("milieu", resolvedOptions.milieu);
-    }
+    this.applyPosterRenderParameters(url, resolvedOptions);
 
     return url.toString();
   }
@@ -106,8 +86,7 @@ export class TravellerMapService {
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<PosterImageInfo> {
     const resolvedOptions = this.resolvePosterOptions(options);
-    const remoteUrl = this.buildPosterUrl(sector, resolvedOptions);
-    const posterBlob = await this.fetchPosterBlob(remoteUrl);
+    const posterBlob = await this.fetchPosterBlobForSelection(sector, resolvedOptions);
     const dimensions = await this.loadImageDimensionsFromBlob(posterBlob);
     const cachedPath = await this.cachePosterBlob(sector, resolvedOptions, posterBlob);
 
@@ -122,6 +101,11 @@ export class TravellerMapService {
     sector: TravellerSectorSelection,
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<TravellerSectorMetadata> {
+    const generatedContent = this.getGeneratedContent(sector);
+    if (generatedContent) {
+      return generatedContent.metadata;
+    }
+
     const resolvedOptions = this.resolvePosterOptions(options);
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/metadata`);
 
@@ -158,6 +142,11 @@ export class TravellerMapService {
     metadata: TravellerSectorMetadata,
     options: Partial<TravellerPosterOptions> = {}
   ): Promise<TravellerSectorSystem[]> {
+    const generatedContent = this.getGeneratedContent(sector);
+    if (generatedContent) {
+      return generatedContent.systems;
+    }
+
     const resolvedOptions = this.resolvePosterOptions(options);
     const url = new URL(`${TRAVELLER_MAP_API_BASE}/sec`);
 
@@ -179,6 +168,43 @@ export class TravellerMapService {
     }
 
     return this.parseSectorSystems(await response.text(), metadata);
+  }
+
+  async fetchGeneratedJumpMapBlob(
+    sector: TravellerSectorSelection,
+    system: TravellerSectorSystem,
+    options: Partial<TravellerPosterOptions> = {}
+  ): Promise<Blob> {
+    const generatedContent = this.getGeneratedContent(sector);
+    const resolvedOptions = this.resolvePosterOptions(options);
+    const milieu = generatedContent?.metadata.milieu ?? resolvedOptions.milieu;
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/jumpmap`);
+
+    url.searchParams.set("jump", "0");
+    url.searchParams.set("hex", system.hex);
+    url.searchParams.set("style", resolvedOptions.style);
+    url.searchParams.set("scale", String(Math.max(64, Math.round(resolvedOptions.scale))));
+    url.searchParams.set("options", "0");
+    url.searchParams.set("border", "0");
+    url.searchParams.set("lint", "0");
+
+    if (milieu) {
+      url.searchParams.set("milieu", milieu);
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain"
+      },
+      body: buildGeneratedSystemJumpMapData(system)
+    });
+
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.JumpMapStatus", { status: response.status }));
+    }
+
+    return await response.blob();
   }
 
   private createTypedSectorKey(type: "sector" | "subsector", name: string, location: string): string {
@@ -204,6 +230,7 @@ export class TravellerMapService {
       sectorX: sector.SectorX,
       sectorY: sector.SectorY,
       tags: this.parseTags(sector.SectorTags),
+      source: "travellermap",
       kind: "sector",
       sectorName: sector.Name,
       dimensions: {
@@ -220,6 +247,7 @@ export class TravellerMapService {
       sectorX: subsector.SectorX,
       sectorY: subsector.SectorY,
       tags: [...this.parseTags(subsector.SectorTags), `Subsector ${subsector.Index}`],
+      source: "travellermap",
       kind: "subsector",
       sectorName: subsector.Sector,
       subsectorIndex: subsector.Index,
@@ -370,6 +398,61 @@ export class TravellerMapService {
     return this.normalizeFoundryAssetPath(upload.path);
   }
 
+  private getGeneratedContent(sector: TravellerSectorSelection): GeneratedTravellerContent | null {
+    if (sector.source !== "generated") {
+      return null;
+    }
+
+    if (!sector.generatedContent) {
+      throw new Error(localize("Errors.GeneratedContentMissing"));
+    }
+
+    return sector.generatedContent;
+  }
+
+  private async fetchPosterBlobForSelection(
+    sector: TravellerSectorSelection,
+    options: TravellerPosterOptions
+  ): Promise<Blob> {
+    const generatedContent = this.getGeneratedContent(sector);
+
+    if (generatedContent) {
+      return await this.fetchGeneratedPosterBlob(sector, options, generatedContent);
+    }
+
+    return await this.fetchPosterBlob(this.buildPosterUrl(sector, options));
+  }
+
+  private async fetchGeneratedPosterBlob(
+    sector: TravellerSectorSelection,
+    options: TravellerPosterOptions,
+    generatedContent: GeneratedTravellerContent
+  ): Promise<Blob> {
+    const url = new URL(`${TRAVELLER_MAP_API_BASE}/poster`);
+
+    if (sector.kind === "subsector" && sector.subsectorIndex) {
+      url.searchParams.set("subsector", sector.subsectorIndex);
+    }
+
+    this.applyPosterRenderParameters(url, options);
+
+    const body = new URLSearchParams({
+      data: generatedContent.poster.data,
+      metadata: generatedContent.poster.metadata
+    });
+
+    const response = await fetch(url, {
+      method: "POST",
+      body
+    });
+
+    if (!response.ok) {
+      throw new Error(formatLocalize("Errors.PosterStatus", { status: response.status }));
+    }
+
+    return await response.blob();
+  }
+
   private async ensurePosterStorageDirectory(
     filePicker: typeof foundry.applications.apps.FilePicker.implementation
   ): Promise<void> {
@@ -402,6 +485,32 @@ export class TravellerMapService {
     }
 
     return "png";
+  }
+
+  private applyPosterRenderParameters(url: URL, options: TravellerPosterOptions): void {
+    url.searchParams.set("style", options.style);
+    url.searchParams.set("scale", String(options.scale));
+
+    if (options.compositing) {
+      url.searchParams.set("compositing", "1");
+    }
+
+    const renderOptions = this.buildPosterRenderOptions(options);
+    if (renderOptions !== undefined) {
+      url.searchParams.set("options", String(renderOptions));
+    }
+
+    if (options.noGrid) {
+      url.searchParams.set("nogrid", "1");
+    }
+
+    if (!options.routes) {
+      url.searchParams.set("routes", "0");
+    }
+
+    if (options.milieu) {
+      url.searchParams.set("milieu", options.milieu);
+    }
   }
 
   private buildPosterRenderOptions(options: TravellerPosterOptions): number | undefined {

@@ -138,6 +138,13 @@ export async function generateSystemJournalsAndNotes(
     await scene.deleteEmbeddedDocuments("Note", existingGeneratedNotes);
   }
 
+  if (sector.source === "generated") {
+    return {
+      createdNotes: 0,
+      touchedJournals
+    };
+  }
+
   const noteData = relevantSystems
     .map((system) => buildSceneNoteData(system, sector, grid, pageLinks.get(system.hex)))
     .filter((note): note is NoteDocument.CreateData => note !== null);

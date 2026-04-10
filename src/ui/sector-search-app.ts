@@ -69,6 +69,7 @@ export class SectorSearchApplication extends SectorSearchApplicationBase {
       canCreate: Boolean(this.#selectedSector) && !this.#isCreating,
       isLoading: this.#isLoading,
       isCreating: this.#isCreating,
+      isCreatingSelection: this.#isCreating,
       error: this.#error,
       posterOptions: this.#toPosterOptionsViewModel(),
       systemNotes: this.#toSystemNotesViewModel()

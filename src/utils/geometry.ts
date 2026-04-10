@@ -9,18 +9,24 @@ export interface FlatTopHexMetrics {
   stepY: number;
 }
 
+export function calculateFlatTopHexMetricsFromGridSize(gridSize: number): FlatTopHexMetrics {
+  const hexHeight = Math.max(1, gridSize);
+  const hexWidth = hexHeight / HEX_HEIGHT_TO_WIDTH_RATIO;
+
+  return {
+    hexWidth,
+    hexHeight,
+    stepX: hexWidth * 0.75,
+    stepY: hexHeight
+  };
+}
+
 export function calculateFlatTopHexMetricsFromImage(
   imageWidth: number,
   imageHeight: number,
   dimensions: SectorDimensions
 ): FlatTopHexMetrics {
   const normalizedHexHeight = imageHeight / (dimensions.rows + 0.5);
-  const normalizedHexWidth = normalizedHexHeight / HEX_HEIGHT_TO_WIDTH_RATIO;
 
-  return {
-    hexWidth: normalizedHexWidth,
-    hexHeight: normalizedHexHeight,
-    stepX: normalizedHexWidth * 0.75,
-    stepY: normalizedHexHeight
-  };
+  return calculateFlatTopHexMetricsFromGridSize(normalizedHexHeight);
 }

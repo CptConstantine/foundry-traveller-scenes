@@ -18,8 +18,12 @@ export const DEFAULT_GRID_DISTANCE = 1;
 export const DEFAULT_GRID_UNITS = "pc";
 export const DEFAULT_GRID_COLOR = "#4ac0ff";
 export const POSTER_STORAGE_PATH = `assets/${MODULE_ID}/posters`;
+export const SYSTEM_TILE_STORAGE_PATH = `assets/${MODULE_ID}/system-tiles`;
+export const GENERATED_SYSTEM_TILE_SIZE_RATIO = 1;
+export const GENERATED_SYSTEM_TILE_RENDER_SCALE = 200;
 
 export const SECTOR_SEARCH_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/sector-search-app.hbs`;
+export const GENERATED_SYSTEM_TEMPLATE_PATH = `modules/${MODULE_ID}/templates/generated-system-app.hbs`;
 
 export const DEFAULT_POSTER_OPTIONS: Readonly<TravellerPosterOptions> = Object.freeze({
   style: "poster",

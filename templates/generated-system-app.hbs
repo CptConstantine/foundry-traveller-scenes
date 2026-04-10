@@ -1,0 +1,69 @@
+<section class="traveller-scenes__app traveller-scenes__stack">
+  <section class="traveller-scenes__stack traveller-scenes__generation-panel">
+    <p class="traveller-scenes__hint">{{localize "TRAVELLER_SCENES.Generator.Hint"}}</p>
+
+    {{#if hasCurrentScene}}
+      <p class="traveller-scenes__status">{{localize "TRAVELLER_SCENES.Generator.CurrentScene" name=currentSceneName}}</p>
+    {{else}}
+      <p class="traveller-scenes__status traveller-scenes__status--error">{{localize "TRAVELLER_SCENES.Generator.NoCurrentScene"}}</p>
+    {{/if}}
+
+    {{#if error}}
+      <p class="traveller-scenes__status traveller-scenes__status--error">{{error}}</p>
+    {{/if}}
+
+    <label class="traveller-scenes__field">
+      <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Generation.Seed.Label"}}</span>
+      <input
+        class="traveller-scenes__input"
+        type="text"
+        name="generation-seed"
+        value="{{seed}}"
+        placeholder="{{localize "TRAVELLER_SCENES.Generation.Seed.Placeholder"}}"
+        autocomplete="off"
+      />
+    </label>
+
+    <label class="traveller-scenes__field">
+      <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Generation.Name.Label"}}</span>
+      <input
+        class="traveller-scenes__input"
+        type="text"
+        name="system-name"
+        value="{{systemName}}"
+        placeholder="{{localize "TRAVELLER_SCENES.Generation.Name.Placeholder"}}"
+        autocomplete="off"
+      />
+    </label>
+
+    <label class="traveller-scenes__field">
+      <span class="traveller-scenes__label">{{localize "TRAVELLER_SCENES.Generator.Milieu.Label"}}</span>
+      <select class="traveller-scenes__input" name="generation-milieu">
+        {{#each milieuOptions}}
+          <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+        {{/each}}
+      </select>
+    </label>
+
+    <div class="traveller-scenes__checkbox-list">
+      <label class="traveller-scenes__checkbox">
+        <input type="checkbox" name="generate-system-notes" {{#if systemNotes.generateSystemNotes}}checked{{/if}} />
+        <span class="traveller-scenes__checkbox-copy">
+          <strong>{{localize "TRAVELLER_SCENES.Generator.SystemNotes.Label"}}</strong>
+          <small>{{localize "TRAVELLER_SCENES.Generator.SystemNotes.Hint"}}</small>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  <footer class="traveller-scenes__footer">
+    <button
+      class="traveller-scenes__button traveller-scenes__button--primary"
+      type="button"
+      data-action="place-generated-system"
+      {{#unless hasCurrentScene}}disabled{{/unless}}
+    >
+      {{#if isGenerating}}{{localize "TRAVELLER_SCENES.Generator.Actions.Placing"}}{{else}}{{localize "TRAVELLER_SCENES.Generator.Actions.Place"}}{{/if}}
+    </button>
+  </footer>
+</section>

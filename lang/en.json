@@ -2,10 +2,11 @@
   "TRAVELLER_SCENES": {
     "ModuleTitle": "Traveller Scenes",
     "Sidebar": {
-      "CreateScene": "Create Traveller Scene"
+      "CreateScene": "Create Traveller Scene",
+      "GenerateSystem": "Generate Traveller System"
     },
     "Search": {
-      "WindowTitle": "Traveller map search",
+      "WindowTitle": "Traveller scene creator",
       "Label": "sector or subsector search",
       "Placeholder": "Spinward Marches",
       "Hint": "Search TravellerMap for a sector or subsector, then create a scene that uses the poster image as the background with a matching Traveller hex grid overlaid in Foundry.",
@@ -16,7 +17,7 @@
       },
       "PosterOptions": {
         "Summary": "Poster options",
-        "SummaryHint": "Choose the TravellerMap poster style and overlays for the generated scene.",
+        "SummaryHint": "Choose the TravellerMap poster style and overlays for the scene you are creating.",
         "Hint": "These settings change the TravellerMap poster used as the scene background. Scale and rotation stay fixed in this pass to preserve grid alignment.",
         "Style": {
           "Label": "Style"
@@ -60,6 +61,38 @@
         "EnterQuery": "Enter a sector or subsector name to search TravellerMap.",
         "NoResults": "No sectors or subsectors found for “{query}”.",
         "ChooseSector": "Choose a sector or subsector before creating a scene."
+      }
+    },
+    "Generator": {
+      "WindowTitle": "Generate Traveller system",
+      "Hint": "Generate a seeded Traveller system and place it as a draggable tile on the scene you are currently viewing.",
+      "CurrentScene": "Current scene: {name}",
+      "NoCurrentScene": "No current scene is available. Open the scene you want first, then generate the system tile.",
+      "Milieu": {
+        "Label": "Milieu"
+      },
+      "SystemNotes": {
+        "Label": "Generate system journal entry",
+        "Hint": "Create a journal entry and system page for the generated world. Scene notes are not created in this workflow."
+      },
+      "Actions": {
+        "Place": "Place system tile",
+        "Placing": "Placing system tile…"
+      }
+    },
+    "Generation": {
+      "Hint": "Generate a brand-new Traveller system using seeded procedural data and place it as a draggable tile on the current scene. Leave the seed blank for a fresh result, or reuse a seed to reproduce the same system.",
+      "Name": {
+        "Label": "system name",
+        "Placeholder": "Leave blank for a random name"
+      },
+      "Seed": {
+        "Label": "generation seed",
+        "Placeholder": "Leave blank for a random seed"
+      },
+      "Actions": {
+        "GenerateSystem": "Generate random system",
+        "Creating": "Generating scene…"
       }
     },
     "Scene": {
@@ -245,17 +278,28 @@
       }
     },
     "Notifications": {
-      "CreatedScene": "Created scene: {name}"
+      "CreatedScene": "Created scene: {name}",
+      "GeneratedSystemTile": "Created a draggable system tile for {name}. Move it to whichever hex you want on the scene.",
+      "GeneratedSystemPlaced": "Placed generated system tile on {scene}."
     },
     "Errors": {
       "OnlyGM": "Only a GM can create scenes.",
       "SearchFailed": "TravellerMap search failed.",
       "SceneCreationFailed": "Scene creation failed.",
+      "GeneratedSceneCreationFailed": "Generated scene creation failed.",
+      "GeneratedSystemPlacementFailed": "Generated system placement failed.",
+      "GeneratedContentMissing": "Generated content was missing from the procedural sector payload.",
+      "CurrentSceneMissing": "Open or view the scene you want to use before generating a system tile.",
       "SearchStatus": "TravellerMap search failed with status {status}.",
       "PosterStatus": "TravellerMap poster request failed with status {status}.",
+      "JumpMapStatus": "TravellerMap Jump Map request failed with status {status}.",
       "PosterStoreFailed": "Failed to store the TravellerMap poster in Foundry's module storage.",
+      "SystemTileStoreFailed": "Failed to store the generated system tile artwork in Foundry's module storage.",
+      "SystemTileCreateFailed": "Foundry did not return a Tile document for the generated system marker.",
+      "SystemTileDirectoryCreateFailed": "Failed to create generated system tile asset directory: {message}",
       "PosterDirectoryCreateFailed": "Failed to create poster asset directory: {message}",
       "PosterLoadFailed": "Failed to load the TravellerMap poster image.",
+      "JumpMapLoadFailed": "Failed to load the TravellerMap Jump Map image.",
       "MetadataStatus": "TravellerMap metadata request failed with status {status}.",
       "SystemDataStatus": "TravellerMap SEC request failed with status {status}.",
       "SceneLevelMissing": "Foundry did not create an initial Scene Level.",

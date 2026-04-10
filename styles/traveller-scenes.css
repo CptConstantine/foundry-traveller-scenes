@@ -134,6 +134,15 @@
 .traveller-scenes__footer {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.traveller-scenes__generation-panel {
+  padding: 0.75rem;
+  border: 1px solid var(--traveller-scenes-border);
+  border-radius: 0.5rem;
+  background: var(--traveller-scenes-panel);
 }
 
 .traveller-scenes__button {
